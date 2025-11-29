@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 遊戲生成機 v14.0 (終極修復版)</title>
+    <title>AI 遊戲生成機 v16.0 (智能搜題版)</title>
     <style>
         :root { --bg: #0f0c29; --panel: #302b63; --accent: #cb2d3e; --highlight: #ef473a; --text: #eee; }
         body { font-family: '微軟正黑體', sans-serif; background: linear-gradient(135deg, #24243e 0%, #302b63 100%); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; overflow: hidden; }
         
         #console { width: 100%; max-width: 700px; background: rgba(0,0,0,0.6); border-radius: 20px; backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 0 50px rgba(0,0,0,0.8); overflow: hidden; display: flex; flex-direction: column; position: relative; transition: height 0.3s; z-index: 5; }
 
-        /* 啟動遮罩 (強制解鎖音效用) */
+        /* 啟動遮罩 */
         #start-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 999; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; transition: opacity 0.5s; }
         #start-overlay h1 { font-size: 3rem; color: white; margin-bottom: 20px; animation: pulse 1.5s infinite; }
         #start-overlay p { color: #ccc; font-size: 1.2rem; }
@@ -25,8 +25,9 @@
         label { font-size: 0.85rem; color: #aaa; display: block; margin-bottom: 8px; font-weight: bold; }
         input[type="password"], input[type="text"] { width: 100%; padding: 14px; border-radius: 10px; border: 1px solid #555; background: rgba(0,0,0,0.4); color: white; box-sizing: border-box; font-size: 1rem; }
         
-        .tabs { display: flex; justify-content: center; gap: 15px; margin-bottom: 25px; border-bottom: 1px solid #444; padding-bottom: 15px; }
-        .tab-btn { background: transparent; border: 1px solid #444; padding: 10px 25px; border-radius: 50px; color: #aaa; cursor: pointer; transition: 0.3s; }
+        /* Tab 切換 (3個) */
+        .tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 25px; border-bottom: 1px solid #444; padding-bottom: 15px; }
+        .tab-btn { background: transparent; border: 1px solid #444; padding: 8px 15px; border-radius: 50px; color: #aaa; cursor: pointer; transition: 0.3s; font-size: 0.9rem; }
         .tab-btn.active { background: var(--highlight); color: white; border-color: var(--highlight); }
 
         .mode-section { display: none; }
@@ -54,11 +55,10 @@
         .btn-nav { background: transparent; border: 1px solid #666; color: #ccc; padding: 6px 15px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; gap: 5px; }
         .btn-nav:hover { color: white; border-color: white; }
         
-        /* 音量視覺化條 */
         .music-indicator { display: flex; gap: 3px; height: 15px; align-items: flex-end; margin-left: 10px; opacity: 0.5; }
         .music-indicator.active { opacity: 1; }
         .bar { width: 3px; background: var(--highlight); animation: none; }
-        .music-indicator.active .bar { animation: bounce 1s infinite ease-in-out; }
+        .music-indicator.active .bar { animation: bounce 1.5s infinite ease-in-out; }
         .bar:nth-child(1) { height: 60%; animation-delay: 0s; }
         .bar:nth-child(2) { height: 100%; animation-delay: 0.2s; }
         .bar:nth-child(3) { height: 50%; animation-delay: 0.4s; }
@@ -87,13 +87,13 @@
 
 <div id="start-overlay" onclick="unlockAudioContext()">
     <h1>👆 點擊畫面開始</h1>
-    <p>啟動 AI 遊戲生成機 (含專注背景音樂)</p>
+    <p>AI 智能搜題 • 專注音樂</p>
 </div>
 
 <div id="console">
     <div id="setup-view">
-        <h1 class="title">AI 遊戲生成機 v14.0</h1>
-        <div class="subtitle">Google 穩定音源 • 自動播放修復版</div>
+        <h1 class="title">AI 遊戲生成機 v16.0</h1>
+        <div class="subtitle">圖片 • 文字 • 智能搜題 (Smart Search)</div>
         
         <div class="input-group">
             <label>1. API Key (必填)</label>
@@ -103,10 +103,13 @@
             <label>2. 指定模型 (選填)</label>
             <input type="text" id="custom-model" placeholder="預設自動測試">
         </div>
+        
         <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('image')">📸 圖片出題</button>
-            <button class="tab-btn" onclick="switchTab('text')">📝 文字/考題</button>
+            <button class="tab-btn active" onclick="switchTab('image')">📸 圖片</button>
+            <button class="tab-btn" onclick="switchTab('text')">📝 文字</button>
+            <button class="tab-btn" onclick="switchTab('search')">🔍 智能搜題</button>
         </div>
+
         <div id="mode-image" class="mode-section active">
             <div class="file-upload">
                 <input type="file" id="image-input" accept="image/*" onchange="previewImage(this)">
@@ -114,10 +117,19 @@
             </div>
             <img id="preview" style="max-width: 150px; display: none; margin: 0 auto 15px auto; border-radius: 10px; border: 2px solid #555;">
         </div>
+
         <div id="mode-text" class="mode-section">
-            <textarea id="text-input" placeholder="請貼上題目內容..."></textarea>
+            <textarea id="text-input" placeholder="請貼上文章、故事或考題內容..."></textarea>
         </div>
-        <button class="btn-main" id="generate-btn" onclick="startProcess()">🚀 開始生成</button>
+
+        <div id="mode-search" class="mode-section">
+            <input type="text" id="search-input" placeholder="輸入關鍵字 (例如: 小五數學、多益英文...)" style="margin-top:20px; text-align:center;">
+            <div style="font-size: 0.8rem; color: #888; margin-top: 15px;">
+                💡 AI 將會運用龐大的資料庫，針對您輸入的主題自動生成考題。
+            </div>
+        </div>
+
+        <button class="btn-main" id="generate-btn" onclick="startProcess()">🚀 生成 10 關測驗</button>
         <div id="status-log"></div>
     </div>
 
@@ -147,10 +159,7 @@
     </div>
 </div>
 
-<audio id="bgm-player" loop>
-    <source src="https://actions.google.com/sounds/v1/science_fiction/space_ambience.ogg" type="audio/ogg">
-    <source src="https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg" type="audio/ogg">
-</audio>
+<audio id="bgm-player" loop></audio>
 
 <script>
     const keyInput = document.getElementById('api-key');
@@ -165,40 +174,40 @@
     let currentMode = 'image';
     const FALLBACK_MODELS = ["gemini-2.0-flash-exp", "gemini-1.5-flash", "gemini-1.5-pro"];
 
-    // --- 音樂核心 (使用 Audio API 確保狀態) ---
+    // 音樂系統
+    const BGM_PLAYLIST = [
+        "https://upload.wikimedia.org/wikipedia/commons/3/35/Gymnopedie_No_1.mp3",
+        "https://upload.wikimedia.org/wikipedia/commons/2/23/Debussy_-_Clair_de_lune_-_Dave_Horn.mp3",
+        "https://upload.wikimedia.org/wikipedia/commons/8/86/Mozart_-_Sonata_No._16_in_C_Major_K545_-_I._Allegro.mp3"
+    ];
+
     const audioPlayer = document.getElementById('bgm-player');
     const musicIndicator = document.getElementById('music-bars');
     const musicToggleBtn = document.getElementById('music-toggle');
     let isMusicPlaying = false;
 
-    // 1. 強制解鎖函式
     function unlockAudioContext() {
-        // 使用者點擊遮罩時，我們淡出遮罩並嘗試播放(音量設為0)以解鎖
         const overlay = document.getElementById('start-overlay');
         overlay.style.opacity = '0';
         setTimeout(() => overlay.style.display = 'none', 500);
-
-        // 預先加載並播放一瞬間 (解鎖關鍵)
-        audioPlayer.volume = 0.3;
+        const randomIndex = Math.floor(Math.random() * BGM_PLAYLIST.length);
+        audioPlayer.src = BGM_PLAYLIST[randomIndex];
+        audioPlayer.volume = 0.2;
         audioPlayer.play().then(() => {
             console.log("Audio unlocked!");
-            // 立即暫停，等到按下「生成」才正式播放
-            audioPlayer.pause(); 
+            audioPlayer.pause();
         }).catch(e => console.error("Unlock failed:", e));
     }
 
-    // 2. 正式播放函式
     function startMusic() {
         audioPlayer.currentTime = 0;
-        audioPlayer.volume = 0.4;
         audioPlayer.play().then(() => {
             isMusicPlaying = true;
             musicIndicator.classList.add('active');
             musicToggleBtn.innerHTML = "🎵 音樂開";
-            log("🎵 背景音樂已啟動", "success");
+            log("🎵 專注音樂已啟動", "success");
         }).catch(e => {
-            console.error("Play failed:", e);
-            log("⚠️ 音樂播放失敗，請檢查靜音鍵", "error");
+            log("⚠️ 音樂播放失敗", "error");
         });
     }
 
@@ -222,7 +231,6 @@
         musicIndicator.classList.remove('active');
     }
 
-    // --- 一般邏輯 ---
     function switchTab(mode) {
         currentMode = mode;
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -230,9 +238,12 @@
         if (mode === 'image') {
             document.querySelector('.tab-btn:nth-child(1)').classList.add('active');
             document.getElementById('mode-image').classList.add('active');
-        } else {
+        } else if (mode === 'text') {
             document.querySelector('.tab-btn:nth-child(2)').classList.add('active');
             document.getElementById('mode-text').classList.add('active');
+        } else {
+            document.querySelector('.tab-btn:nth-child(3)').classList.add('active');
+            document.getElementById('mode-search').classList.add('active');
         }
     }
 
@@ -272,11 +283,11 @@
         
         if (!apiKey) return log("請輸入 API Key", "error");
 
-        // --- 關鍵：在這裡正式啟動音樂 ---
         startMusic();
 
         let inputData = null;
         let isImage = false;
+        let isSearch = false;
 
         if (currentMode === 'image') {
             const file = document.getElementById('image-input').files[0];
@@ -285,11 +296,18 @@
             const compressedBase64 = await compressImage(file);
             inputData = compressedBase64.split(',')[1];
             isImage = true;
-        } else {
+        } else if (currentMode === 'text') {
             const textVal = document.getElementById('text-input').value.trim();
             if (!textVal) return log("請輸入文字", "error");
             inputData = textVal;
             isImage = false;
+        } else {
+            // Search Mode
+            const searchVal = document.getElementById('search-input').value.trim();
+            if (!searchVal) return log("請輸入搜尋關鍵字", "error");
+            inputData = searchVal;
+            isImage = false;
+            isSearch = true;
         }
 
         localStorage.setItem('gemini_key', apiKey);
@@ -311,8 +329,8 @@
             for (const modelName of modelsToTry) {
                 try {
                     log(`連接 ${modelName}...`);
-                    const result = await callGemini(apiKey, modelName, inputData, isImage);
-                    log(`✅ 成功！生成混合題型...`, "success");
+                    const result = await callGemini(apiKey, modelName, inputData, isImage, isSearch);
+                    log(`✅ 成功！生成測驗數據...`, "success");
                     successResult = result;
                     break; 
                 } catch (err) {
@@ -354,21 +372,44 @@
         });
     }
 
-    async function callGemini(key, model, data, isImage) {
+    // --- 核心 AI 邏輯 (含智能搜尋 Prompt) ---
+    async function callGemini(key, model, data, isImage, isSearch) {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
-        let userPart = isImage ? { inline_data: { mime_type: "image/jpeg", data: data } } : { text: `Material: ${data}` };
+        
+        let userPart;
+        let systemPrompt;
 
-        const prompt = `
-            You are an educational game generator for a 10-year-old in Taiwan.
-            Analyze input. Generate a 10-stage quiz. Support 'choice' and 'fill'.
-            RULES: Traditional Chinese. 10 stages. Shuffle questions.
+        if (isImage) {
+            userPart = { inline_data: { mime_type: "image/jpeg", data: data } };
+            systemPrompt = "Analyze the image and generate a quiz.";
+        } else if (isSearch) {
+            // 智能搜尋專用 Prompt
+            userPart = { text: `Topic: ${data}` };
+            systemPrompt = `
+                You are an expert teacher and curriculum designer. 
+                The user wants to practice the topic: "${data}".
+                Using your internal knowledge base, simulate a web search and generate relevant, high-quality quiz questions for this specific topic and difficulty level.
+                If the topic is "TOEIC", use business English. If "Grade 5 Math", use appropriate math problems.
+            `;
+        } else {
+            userPart = { text: `Material: ${data}` };
+            systemPrompt = "Analyze the text material and generate a quiz.";
+        }
+
+        const fullPrompt = `
+            ${systemPrompt}
+            Target Audience: 10-year-old child in Taiwan (Traditional Chinese).
+            Task: Generate exactly 10 stages (questions).
+            Question Types: Mix of 'choice' (Multiple Choice) and 'fill' (Fill-in-the-blank).
+            Randomness: Ensure questions cover different aspects of the topic.
+            
             JSON Format:
             {
                 "stages": [
                     {
                         "type": "choice", "emoji": "🔢", "text": "Question",
                         "options": [{ "text": "A", "correct": false, "feedback": "Why" }, { "text": "B", "correct": true, "feedback": "Why" }],
-                        "answer": "correct_answer", "feedback_correct": "Good", "feedback_wrong": "Bad"
+                        "answer": "correct_answer_string", "feedback_correct": "Good", "feedback_wrong": "Bad"
                     }
                 ]
             }
@@ -378,7 +419,7 @@
         const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }, userPart] }] })
+            body: JSON.stringify({ contents: [{ parts: [{ text: fullPrompt }, userPart] }] })
         });
 
         if (!response.ok) throw new Error(response.status);
@@ -463,7 +504,9 @@
     }
 
     function updateHP() {
-        let h = ""; for(let i=0;i<hp;i++) h+="❤️"; for(let i=hp;i<5;i++) h+="🖤"; 
+        let h = ""; 
+        for(let i=0;i<hp;i++) h+="❤️"; 
+        for(let i=hp;i<5;i++) h+="🖤"; 
         document.getElementById('hp-display').innerText = h;
     }
 
