@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 遊戲生成機 v11.0 (完美介面版)</title>
+    <title>AI 遊戲生成機 v12.0 (沉浸體驗版)</title>
     <style>
         :root { --bg: #1a1a2e; --panel: #16213e; --accent: #0f3460; --highlight: #e94560; --text: #eee; }
         body { font-family: '微軟正黑體', sans-serif; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
         
-        #console { width: 100%; max-width: 700px; background: rgba(22, 33, 62, 0.9); border-radius: 20px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 0 40px rgba(0,0,0,0.6); overflow: hidden; display: flex; flex-direction: column; position: relative; }
+        #console { width: 100%; max-width: 700px; background: rgba(22, 33, 62, 0.95); border-radius: 20px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 0 50px rgba(0,0,0,0.7); overflow: hidden; display: flex; flex-direction: column; position: relative; transition: height 0.3s; }
 
         /* 設定區 */
         #setup-view { padding: 40px; text-align: center; width: 100%; box-sizing: border-box; }
@@ -45,14 +45,16 @@
         .log-error { color: #ff6b6b; } .log-success { color: #69f0ae; } .log-info { color: #40c4ff; }
 
         /* 遊戲區 */
-        #game-view { display: none; flex-direction: column; height: 750px; width: 100%; }
+        #game-view { display: none; flex-direction: column; height: 750px; width: 100%; position: relative; }
         
         /* 頂部導航列 */
         .game-header { padding: 15px 20px; background: rgba(0,0,0,0.4); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); }
         
-        /* 首頁按鈕 */
-        .btn-home { background: transparent; border: 1px solid #666; color: #ccc; padding: 8px 15px; border-radius: 20px; cursor: pointer; font-size: 0.9rem; display: flex; align-items: center; gap: 5px; transition: 0.2s; }
-        .btn-home:hover { background: rgba(255,255,255,0.1); color: white; border-color: white; }
+        /* 按鈕群 */
+        .header-left { display: flex; gap: 10px; }
+        .btn-nav { background: transparent; border: 1px solid #666; color: #ccc; padding: 8px 15px; border-radius: 20px; cursor: pointer; font-size: 0.9rem; display: flex; align-items: center; gap: 5px; transition: 0.2s; }
+        .btn-nav:hover { background: rgba(255,255,255,0.1); color: white; border-color: white; }
+        .btn-music.playing { border-color: var(--highlight); color: var(--highlight); box-shadow: 0 0 10px rgba(233,69,96,0.3); }
 
         .status-badge { background: #333; padding: 5px 15px; border-radius: 20px; font-size: 0.9rem; color: #aaa; font-weight: bold; }
         
@@ -71,57 +73,53 @@
         #answer-input:focus { border-color: var(--highlight); outline: none; }
         .btn-submit { background: var(--highlight); color: white; border: none; padding: 0 30px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 1.1rem; }
 
-        /* 遮罩 */
         #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: none; flex-direction: column; justify-content: center; align-items: center; text-align: center; z-index: 20; padding: 20px; box-sizing: border-box; }
         #overlay h2 { font-size: 3.5rem; margin: 0 0 20px 0; }
         #overlay p { font-size: 1.3rem; margin: 0 0 35px 0; line-height: 1.6; max-width: 80%; background: rgba(255,255,255,0.1); padding: 25px; border-radius: 15px; }
+        
+        /* 隱藏的音訊播放器 */
+        #bgm-player { display: none; }
     </style>
 </head>
 <body>
 
 <div id="console">
     <div id="setup-view">
-        <h1>AI 遊戲生成機 v11.0</h1>
-        <div class="subtitle">全能題型 • 10關挑戰 • 隨時返回</div>
+        <h1>AI 遊戲生成機 v12.0</h1>
+        <div class="subtitle">隨機專注音樂 • 沉浸式學習體驗</div>
         
         <div class="input-group">
             <label>1. API Key (必填)</label>
             <input type="password" id="api-key" placeholder="貼上 API Key">
         </div>
-
         <div class="input-group">
             <label>2. 指定模型 (選填)</label>
-            <input type="text" id="custom-model" placeholder="預設自動測試 (推薦保留空白)">
+            <input type="text" id="custom-model" placeholder="預設自動測試">
         </div>
-        
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab('image')">📸 圖片出題</button>
             <button class="tab-btn" onclick="switchTab('text')">📝 文字/考題</button>
         </div>
-
         <div id="mode-image" class="mode-section active">
             <div class="file-upload">
                 <input type="file" id="image-input" accept="image/*" onchange="previewImage(this)">
-                <div id="file-label">點擊上傳圖片 (考卷/課本/筆記) 📷</div>
+                <div id="file-label">點擊上傳圖片 📷</div>
             </div>
             <img id="preview" style="max-width: 150px; display: none; margin: 0 auto 15px auto; border-radius: 10px; border: 2px solid #555;">
         </div>
-
         <div id="mode-text" class="mode-section">
-            <textarea id="text-input" placeholder="請貼上題目內容。例如：
-1. 英文單字表
-2. 數學計算題
-3. 歷史故事
-4. 任何網址"></textarea>
+            <textarea id="text-input" placeholder="請貼上題目內容..."></textarea>
         </div>
-
-        <button class="btn-main" id="generate-btn" onclick="startProcess()">🚀 生成混合測驗</button>
+        <button class="btn-main" id="generate-btn" onclick="startProcess()">🚀 生成測驗 (含音樂)</button>
         <div id="status-log"></div>
     </div>
 
     <div id="game-view">
         <div class="game-header">
-            <button class="btn-home" onclick="goHome()">🏠 返回首頁</button>
+            <div class="header-left">
+                <button class="btn-nav" onclick="goHome()">🏠 首頁</button>
+                <button class="btn-nav btn-music" id="music-btn" onclick="toggleMusic()">🎵 音樂</button>
+            </div>
             <div id="hp-display" style="letter-spacing: 3px;">❤️❤️❤️❤️❤️</div>
             <div class="status-badge" id="level-display">Q 1 / 10</div>
         </div>
@@ -138,6 +136,8 @@
         <p id="ov-text">訊息</p>
         <button class="btn-main" style="width: auto;" onclick="closeOverlay()">繼續</button>
     </div>
+
+    <audio id="bgm-player" loop></audio>
 </div>
 
 <script>
@@ -151,9 +151,70 @@
     let hp = 5;
     let pendingAction = null;
     let currentMode = 'image';
-    
     const FALLBACK_MODELS = ["gemini-2.0-flash-exp", "gemini-1.5-flash", "gemini-1.5-pro"];
 
+    // --- 音樂系統 ---
+    // 使用 Wikimedia Commons 上的公有領域古典樂與環境音，穩定且無需擔心 CORS
+    const BGM_PLAYLIST = [
+        "https://upload.wikimedia.org/wikipedia/commons/e/eb/Gymnopedie_No_1.ogg", // Satie - Gymnopédie No.1 (Calm)
+        "https://upload.wikimedia.org/wikipedia/commons/a/ad/Bach_-_Cello_Suite_No._1_in_G_Major_BWV1007_-_I._Prelude.ogg", // Bach - Cello Suite No.1 (Focus)
+        "https://upload.wikimedia.org/wikipedia/commons/e/e6/Debussy_-_Clair_de_lune.ogg", // Debussy - Clair de Lune (Relax)
+        "https://upload.wikimedia.org/wikipedia/commons/d/d7/Mozart_-_Sonata_No._16_in_C_Major%2C_K545_%281st_Mvt%29.ogg" // Mozart (Active)
+    ];
+
+    const audioPlayer = document.getElementById('bgm-player');
+    const musicBtn = document.getElementById('music-btn');
+    let isMusicPlaying = false;
+
+    function playRandomBGM() {
+        const randomIndex = Math.floor(Math.random() * BGM_PLAYLIST.length);
+        audioPlayer.src = BGM_PLAYLIST[randomIndex];
+        audioPlayer.volume = 0.4; // 音量適中
+        
+        // 瀏覽器政策限制：必須與頁面互動後才能播放
+        // 我們在 startProcess (按下按鈕) 時呼叫此函式，剛好符合政策
+        const playPromise = audioPlayer.play();
+        
+        if (playPromise !== undefined) {
+            playPromise.then(_ => {
+                isMusicPlaying = true;
+                updateMusicUI();
+            }).catch(error => {
+                console.log("Autoplay prevented:", error);
+                isMusicPlaying = false;
+                updateMusicUI();
+            });
+        }
+    }
+
+    function toggleMusic() {
+        if (isMusicPlaying) {
+            audioPlayer.pause();
+            isMusicPlaying = false;
+        } else {
+            audioPlayer.play();
+            isMusicPlaying = true;
+        }
+        updateMusicUI();
+    }
+
+    function updateMusicUI() {
+        if (isMusicPlaying) {
+            musicBtn.classList.add('playing');
+            musicBtn.innerHTML = "🎵 播放中";
+        } else {
+            musicBtn.classList.remove('playing');
+            musicBtn.innerHTML = "🔇 已暫停";
+        }
+    }
+
+    // 停止音樂 (回首頁時)
+    function stopMusic() {
+        audioPlayer.pause();
+        audioPlayer.currentTime = 0;
+    }
+
+    // --- 介面功能 ---
     function switchTab(mode) {
         currentMode = mode;
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -167,9 +228,9 @@
         }
     }
 
-    // --- 新增：返回首頁功能 ---
     function goHome() {
-        if (confirm("確定要結束遊戲返回首頁嗎？目前進度將會消失。")) {
+        if (confirm("確定要結束遊戲返回首頁嗎？")) {
+            stopMusic();
             location.reload();
         }
     }
@@ -188,15 +249,15 @@
         if (input.files && input.files[0]) {
             const reader = new FileReader();
             reader.onload = function(e) {
-                const img = document.getElementById('preview');
-                img.src = e.target.result;
-                img.style.display = 'block';
+                document.getElementById('preview').src = e.target.result;
+                document.getElementById('preview').style.display = 'block';
                 document.getElementById('file-label').innerText = "圖片已就緒";
             }
             reader.readAsDataURL(input.files[0]);
         }
     }
 
+    // --- 生成流程 ---
     async function startProcess() {
         const apiKey = keyInput.value.trim();
         let customModel = document.getElementById('custom-model').value.trim();
@@ -225,6 +286,9 @@
         localStorage.setItem('gemini_model', customModel);
         document.getElementById('generate-btn').disabled = true;
 
+        // 啟動音樂
+        playRandomBGM();
+
         try {
             let modelsToTry = [];
             if (customModel) {
@@ -233,7 +297,7 @@
                 log(`指定使用: ${customModel}`);
             } else {
                 modelsToTry = FALLBACK_MODELS;
-                log("自動選擇最佳模型...");
+                log("自動選擇模型...");
             }
 
             let successResult = null;
@@ -250,7 +314,7 @@
                 }
             }
 
-            if (!successResult) throw new Error("所有模型連接失敗");
+            if (!successResult) throw new Error("模型連接失敗");
 
             gameData = successResult;
             setTimeout(startGame, 1000);
@@ -259,6 +323,7 @@
             console.error(e);
             log("終止: " + e.message, "error");
             document.getElementById('generate-btn').disabled = false;
+            stopMusic(); // 失敗則停止音樂
         }
     }
 
@@ -405,8 +470,7 @@
         const btn = document.querySelector('#overlay button');
         
         if(isWin || isDead) {
-            // 遊戲結束或通關時，按鈕變成「返回首頁」
-            pendingAction = () => location.reload();
+            pendingAction = () => { stopMusic(); location.reload(); };
             btn.innerText = "🏠 返回首頁製作新遊戲";
         } else if(isNext) {
             pendingAction = () => { ov.style.display='none'; currentStage++; renderStage(); };
