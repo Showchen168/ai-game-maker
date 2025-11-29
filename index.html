@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 遊戲生成機 v11.0 (完美介面版)</title>
+    <style>
+        :root { --bg: #1a1a2e; --panel: #16213e; --accent: #0f3460; --highlight: #e94560; --text: #eee; }
+        body { font-family: '微軟正黑體', sans-serif; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
+        
+        #console { width: 100%; max-width: 700px; background: rgba(22, 33, 62, 0.9); border-radius: 20px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 0 40px rgba(0,0,0,0.6); overflow: hidden; display: flex; flex-direction: column; position: relative; }
+
+        /* 設定區 */
+        #setup-view { padding: 40px; text-align: center; width: 100%; box-sizing: border-box; }
+        h1 { margin: 0 0 10px 0; font-size: 2rem; color: var(--highlight); text-shadow: 0 0 10px rgba(233,69,96,0.5); }
+        .subtitle { color: #888; font-size: 0.9rem; margin-bottom: 30px; letter-spacing: 1px; }
+        
+        .input-group { margin-bottom: 20px; text-align: left; position: relative; }
+        label { font-size: 0.85rem; color: #a0a0a0; display: block; margin-bottom: 8px; font-weight: bold; }
+        input[type="password"], input[type="text"] { width: 100%; padding: 14px; border-radius: 10px; border: 1px solid #333; background: rgba(0,0,0,0.4); color: white; box-sizing: border-box; font-size: 1rem; transition: 0.3s; }
+        input:focus { border-color: var(--highlight); outline: none; background: rgba(0,0,0,0.6); }
+
+        /* Tab 切換 */
+        .tabs { display: flex; justify-content: center; gap: 15px; margin-bottom: 25px; border-bottom: 1px solid #333; padding-bottom: 15px; }
+        .tab-btn { background: transparent; border: 1px solid #444; padding: 10px 25px; border-radius: 50px; color: #aaa; cursor: pointer; transition: 0.3s; font-weight: bold; }
+        .tab-btn.active { background: var(--highlight); color: white; border-color: var(--highlight); box-shadow: 0 0 15px rgba(233,69,96,0.3); }
+        .tab-btn:hover:not(.active) { border-color: #888; color: #fff; }
+
+        .mode-section { display: none; animation: fadeIn 0.4s ease-out; }
+        .mode-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .file-upload { border: 2px dashed #444; padding: 40px; border-radius: 15px; cursor: pointer; position: relative; margin: 10px 0; transition: 0.3s; background: rgba(255,255,255,0.02); }
+        .file-upload:hover { border-color: var(--highlight); background: rgba(233,69,96,0.05); }
+        .file-upload input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+        
+        textarea { width: 100%; height: 150px; padding: 15px; border-radius: 10px; border: 1px solid #444; background: rgba(0,0,0,0.4); color: white; box-sizing: border-box; resize: vertical; font-size: 1rem; line-height: 1.5; }
+        textarea:focus { border-color: var(--highlight); outline: none; }
+
+        .btn-main { background: var(--highlight); color: white; border: none; padding: 16px 50px; font-size: 1.2rem; border-radius: 50px; cursor: pointer; width: 100%; font-weight: bold; transition: 0.3s; margin-top: 25px; box-shadow: 0 5px 20px rgba(233,69,96,0.3); }
+        .btn-main:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(233,69,96,0.5); }
+        .btn-main:disabled { background: #555; cursor: not-allowed; box-shadow: none; }
+
+        #status-log { margin-top: 20px; font-size: 0.85rem; color: #bbb; text-align: left; background: rgba(0,0,0,0.8); padding: 15px; border-radius: 10px; display: none; max-height: 120px; overflow-y: auto; font-family: 'Courier New', monospace; border: 1px solid #444; }
+        .log-error { color: #ff6b6b; } .log-success { color: #69f0ae; } .log-info { color: #40c4ff; }
+
+        /* 遊戲區 */
+        #game-view { display: none; flex-direction: column; height: 750px; width: 100%; }
+        
+        /* 頂部導航列 */
+        .game-header { padding: 15px 20px; background: rgba(0,0,0,0.4); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        
+        /* 首頁按鈕 */
+        .btn-home { background: transparent; border: 1px solid #666; color: #ccc; padding: 8px 15px; border-radius: 20px; cursor: pointer; font-size: 0.9rem; display: flex; align-items: center; gap: 5px; transition: 0.2s; }
+        .btn-home:hover { background: rgba(255,255,255,0.1); color: white; border-color: white; }
+
+        .status-badge { background: #333; padding: 5px 15px; border-radius: 20px; font-size: 0.9rem; color: #aaa; font-weight: bold; }
+        
+        #scene-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; overflow-y: auto; }
+        #scene-emoji { font-size: 5rem; margin-bottom: 20px; filter: drop-shadow(0 0 20px rgba(255,255,255,0.2)); }
+        #scene-text { font-size: 1.4rem; line-height: 1.6; background: rgba(255,255,255,0.08); padding: 30px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); width: 85%; max-width: 500px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        
+        #action-area { padding: 30px; background: rgba(0,0,0,0.2); min-height: 180px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        
+        .choices-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; max-width: 600px; }
+        .btn-choice { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 18px; border-radius: 12px; cursor: pointer; font-size: 1.1rem; transition: 0.2s; font-weight: bold; }
+        .btn-choice:hover { background: rgba(255,255,255,0.15); border-color: var(--highlight); transform: translateY(-2px); }
+        
+        .input-area { width: 100%; max-width: 400px; display: flex; gap: 10px; }
+        #answer-input { flex: 1; padding: 15px; font-size: 1.2rem; border-radius: 10px; border: 2px solid #555; background: rgba(0,0,0,0.5); color: white; text-align: center; }
+        #answer-input:focus { border-color: var(--highlight); outline: none; }
+        .btn-submit { background: var(--highlight); color: white; border: none; padding: 0 30px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 1.1rem; }
+
+        /* 遮罩 */
+        #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: none; flex-direction: column; justify-content: center; align-items: center; text-align: center; z-index: 20; padding: 20px; box-sizing: border-box; }
+        #overlay h2 { font-size: 3.5rem; margin: 0 0 20px 0; }
+        #overlay p { font-size: 1.3rem; margin: 0 0 35px 0; line-height: 1.6; max-width: 80%; background: rgba(255,255,255,0.1); padding: 25px; border-radius: 15px; }
+    </style>
+</head>
+<body>
+
+<div id="console">
+    <div id="setup-view">
+        <h1>AI 遊戲生成機 v11.0</h1>
+        <div class="subtitle">全能題型 • 10關挑戰 • 隨時返回</div>
+        
+        <div class="input-group">
+            <label>1. API Key (必填)</label>
+            <input type="password" id="api-key" placeholder="貼上 API Key">
+        </div>
+
+        <div class="input-group">
+            <label>2. 指定模型 (選填)</label>
+            <input type="text" id="custom-model" placeholder="預設自動測試 (推薦保留空白)">
+        </div>
+        
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('image')">📸 圖片出題</button>
+            <button class="tab-btn" onclick="switchTab('text')">📝 文字/考題</button>
+        </div>
+
+        <div id="mode-image" class="mode-section active">
+            <div class="file-upload">
+                <input type="file" id="image-input" accept="image/*" onchange="previewImage(this)">
+                <div id="file-label">點擊上傳圖片 (考卷/課本/筆記) 📷</div>
+            </div>
+            <img id="preview" style="max-width: 150px; display: none; margin: 0 auto 15px auto; border-radius: 10px; border: 2px solid #555;">
+        </div>
+
+        <div id="mode-text" class="mode-section">
+            <textarea id="text-input" placeholder="請貼上題目內容。例如：
+1. 英文單字表
+2. 數學計算題
+3. 歷史故事
+4. 任何網址"></textarea>
+        </div>
+
+        <button class="btn-main" id="generate-btn" onclick="startProcess()">🚀 生成混合測驗</button>
+        <div id="status-log"></div>
+    </div>
+
+    <div id="game-view">
+        <div class="game-header">
+            <button class="btn-home" onclick="goHome()">🏠 返回首頁</button>
+            <div id="hp-display" style="letter-spacing: 3px;">❤️❤️❤️❤️❤️</div>
+            <div class="status-badge" id="level-display">Q 1 / 10</div>
+        </div>
+
+        <div id="scene-area">
+            <div id="scene-emoji">🤖</div>
+            <div id="scene-text">載入中...</div>
+        </div>
+        <div id="action-area"></div>
+    </div>
+
+    <div id="overlay">
+        <h2 id="ov-icon">🎉</h2>
+        <p id="ov-text">訊息</p>
+        <button class="btn-main" style="width: auto;" onclick="closeOverlay()">繼續</button>
+    </div>
+</div>
+
+<script>
+    const keyInput = document.getElementById('api-key');
+    if(localStorage.getItem('gemini_key')) keyInput.value = localStorage.getItem('gemini_key');
+    const modelInput = document.getElementById('custom-model');
+    if(localStorage.getItem('gemini_model')) modelInput.value = localStorage.getItem('gemini_model');
+
+    let gameData = null;
+    let currentStage = 0;
+    let hp = 5;
+    let pendingAction = null;
+    let currentMode = 'image';
+    
+    const FALLBACK_MODELS = ["gemini-2.0-flash-exp", "gemini-1.5-flash", "gemini-1.5-pro"];
+
+    function switchTab(mode) {
+        currentMode = mode;
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.mode-section').forEach(s => s.classList.remove('active'));
+        if (mode === 'image') {
+            document.querySelector('.tab-btn:nth-child(1)').classList.add('active');
+            document.getElementById('mode-image').classList.add('active');
+        } else {
+            document.querySelector('.tab-btn:nth-child(2)').classList.add('active');
+            document.getElementById('mode-text').classList.add('active');
+        }
+    }
+
+    // --- 新增：返回首頁功能 ---
+    function goHome() {
+        if (confirm("確定要結束遊戲返回首頁嗎？目前進度將會消失。")) {
+            location.reload();
+        }
+    }
+
+    function log(msg, type='info') {
+        const logBox = document.getElementById('status-log');
+        logBox.style.display = 'block';
+        const line = document.createElement('div');
+        line.className = `log-line log-${type}`;
+        line.innerHTML = `> ${msg}`;
+        logBox.appendChild(line);
+        logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    function previewImage(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = document.getElementById('preview');
+                img.src = e.target.result;
+                img.style.display = 'block';
+                document.getElementById('file-label').innerText = "圖片已就緒";
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    async function startProcess() {
+        const apiKey = keyInput.value.trim();
+        let customModel = document.getElementById('custom-model').value.trim();
+        document.getElementById('status-log').innerHTML = '';
+        
+        if (!apiKey) return log("請輸入 API Key", "error");
+
+        let inputData = null;
+        let isImage = false;
+
+        if (currentMode === 'image') {
+            const file = document.getElementById('image-input').files[0];
+            if (!file) return log("請上傳圖片", "error");
+            log("正在處理圖片...");
+            const compressedBase64 = await compressImage(file);
+            inputData = compressedBase64.split(',')[1];
+            isImage = true;
+        } else {
+            const textVal = document.getElementById('text-input').value.trim();
+            if (!textVal) return log("請輸入文字", "error");
+            inputData = textVal;
+            isImage = false;
+        }
+
+        localStorage.setItem('gemini_key', apiKey);
+        localStorage.setItem('gemini_model', customModel);
+        document.getElementById('generate-btn').disabled = true;
+
+        try {
+            let modelsToTry = [];
+            if (customModel) {
+                if (customModel.startsWith('models/')) customModel = customModel.replace('models/', '');
+                modelsToTry = [customModel];
+                log(`指定使用: ${customModel}`);
+            } else {
+                modelsToTry = FALLBACK_MODELS;
+                log("自動選擇最佳模型...");
+            }
+
+            let successResult = null;
+            for (const modelName of modelsToTry) {
+                try {
+                    log(`連接 ${modelName}...`);
+                    const result = await callGemini(apiKey, modelName, inputData, isImage);
+                    log(`✅ 成功！生成混合題型...`, "success");
+                    successResult = result;
+                    break; 
+                } catch (err) {
+                    if (err.message.includes("404")) log(`❌ ${modelName} 未回應`, "error");
+                    else log(`⚠️ ${err.message}`, "error");
+                }
+            }
+
+            if (!successResult) throw new Error("所有模型連接失敗");
+
+            gameData = successResult;
+            setTimeout(startGame, 1000);
+
+        } catch (e) {
+            console.error(e);
+            log("終止: " + e.message, "error");
+            document.getElementById('generate-btn').disabled = false;
+        }
+    }
+
+    function compressImage(file) {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (e) => {
+                const img = new Image();
+                img.src = e.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    const MAX = 800;
+                    let w = img.width, h = img.height;
+                    if (w > MAX) { h *= MAX/w; w = MAX; }
+                    canvas.width = w; canvas.height = h;
+                    ctx.drawImage(img, 0, 0, w, h);
+                    resolve(canvas.toDataURL('image/jpeg', 0.7));
+                };
+            };
+        });
+    }
+
+    async function callGemini(key, model, data, isImage) {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+        let userPart = isImage ? { inline_data: { mime_type: "image/jpeg", data: data } } : { text: `Material: ${data}` };
+
+        const prompt = `
+            You are an educational game generator for a 10-year-old in Taiwan.
+            Analyze input. Generate a 10-stage quiz. Support 'choice' and 'fill'.
+            RULES: Traditional Chinese. 10 stages. Shuffle questions.
+            JSON Format:
+            {
+                "stages": [
+                    {
+                        "type": "choice", "emoji": "🔢", "text": "Question",
+                        "options": [{ "text": "A", "correct": false, "feedback": "Why" }, { "text": "B", "correct": true, "feedback": "Why" }],
+                        "answer": "correct_answer", "feedback_correct": "Good", "feedback_wrong": "Bad"
+                    }
+                ]
+            }
+            Return ONLY JSON.
+        `;
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }, userPart] }] })
+        });
+
+        if (!response.ok) throw new Error(response.status);
+        const resData = await response.json();
+        const rawText = resData.candidates[0].content.parts[0].text;
+        const jsonString = rawText.substring(rawText.indexOf('{'), rawText.lastIndexOf('}') + 1);
+        try { return JSON.parse(jsonString); } catch(e) { throw new Error("JSON Parse Error"); }
+    }
+
+    function startGame() {
+        document.getElementById('setup-view').style.display = 'none';
+        document.getElementById('game-view').style.display = 'flex';
+        currentStage = 0; hp = 5; 
+        renderStage();
+    }
+
+    function renderStage() {
+        if (currentStage >= gameData.stages.length) {
+            showOverlay("🏆", "恭喜通關！\n全能小博士就是你！", true); return;
+        }
+        const stage = gameData.stages[currentStage];
+        document.getElementById('level-display').innerText = `Q ${currentStage+1} / 10`;
+        updateHP();
+        document.getElementById('scene-emoji').innerText = stage.emoji;
+        document.getElementById('scene-text').innerText = stage.text;
+        
+        const area = document.getElementById('action-area');
+        area.innerHTML = '';
+
+        if (stage.type === 'fill') {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'input-area';
+            const input = document.createElement('input');
+            input.id = 'answer-input';
+            input.placeholder = "輸入答案...";
+            input.autocomplete = "off";
+            const btn = document.createElement('button');
+            btn.className = 'btn-submit';
+            btn.innerText = "送出";
+            btn.onclick = () => checkFillAns(stage, input.value);
+            input.addEventListener("keypress", function(event) { if (event.key === "Enter") btn.click(); });
+            wrapper.appendChild(input);
+            wrapper.appendChild(btn);
+            area.appendChild(wrapper);
+            setTimeout(() => input.focus(), 100);
+        } else {
+            const grid = document.createElement('div');
+            grid.className = 'choices-grid';
+            let opts = [...stage.options].sort(() => Math.random() - 0.5);
+            opts.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = 'btn-choice';
+                btn.innerText = opt.text;
+                btn.onclick = () => checkChoiceAns(opt);
+                grid.appendChild(btn);
+            });
+            area.appendChild(grid);
+        }
+    }
+
+    function checkFillAns(stage, userVal) {
+        if (!userVal.trim()) return;
+        const cleanUser = userVal.trim().toLowerCase();
+        const cleanAns = stage.answer.toString().toLowerCase();
+        if (cleanUser === cleanAns) {
+            showOverlay("⭕", stage.feedback_correct, false, true);
+        } else {
+            hp--; updateHP();
+            if(hp<=0) showOverlay("💀", "遊戲結束...\n" + stage.feedback_wrong, false, false, true);
+            else showOverlay("❌", stage.feedback_wrong, false, false);
+        }
+    }
+
+    function checkChoiceAns(opt) {
+        if (opt.correct) {
+            showOverlay("⭕", opt.feedback, false, true);
+        } else {
+            hp--; updateHP();
+            if(hp<=0) showOverlay("💀", "遊戲結束...\n" + opt.feedback, false, false, true);
+            else showOverlay("❌", opt.feedback, false, false);
+        }
+    }
+
+    function updateHP() {
+        let h = ""; 
+        for(let i=0;i<hp;i++) h+="❤️"; 
+        for(let i=hp;i<5;i++) h+="🖤"; 
+        document.getElementById('hp-display').innerText = h;
+    }
+
+    function showOverlay(icon, txt, isWin, isNext, isDead) {
+        const ov = document.getElementById('overlay'); ov.style.display = 'flex';
+        document.getElementById('ov-icon').innerText = icon;
+        document.getElementById('ov-text').innerText = txt;
+        const btn = document.querySelector('#overlay button');
+        
+        if(isWin || isDead) {
+            // 遊戲結束或通關時，按鈕變成「返回首頁」
+            pendingAction = () => location.reload();
+            btn.innerText = "🏠 返回首頁製作新遊戲";
+        } else if(isNext) {
+            pendingAction = () => { ov.style.display='none'; currentStage++; renderStage(); };
+            btn.innerText = "下一關";
+        } else {
+            pendingAction = () => { ov.style.display='none'; };
+            btn.innerText = "再試一次";
+        }
+    }
+    function closeOverlay() { if(pendingAction) pendingAction(); }
+</script>
+
+</body>
+</html>
