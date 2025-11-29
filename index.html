@@ -3,18 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 遊戲生成機 v16.0 (智能搜題版)</title>
+    <title>AI 萬能遊戲機 v18.0 (全齡通用版)</title>
     <style>
         :root { --bg: #0f0c29; --panel: #302b63; --accent: #cb2d3e; --highlight: #ef473a; --text: #eee; }
         body { font-family: '微軟正黑體', sans-serif; background: linear-gradient(135deg, #24243e 0%, #302b63 100%); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; overflow: hidden; }
         
         #console { width: 100%; max-width: 700px; background: rgba(0,0,0,0.6); border-radius: 20px; backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 0 50px rgba(0,0,0,0.8); overflow: hidden; display: flex; flex-direction: column; position: relative; transition: height 0.3s; z-index: 5; }
-
-        /* 啟動遮罩 */
-        #start-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 999; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; transition: opacity 0.5s; }
-        #start-overlay h1 { font-size: 3rem; color: white; margin-bottom: 20px; animation: pulse 1.5s infinite; }
-        #start-overlay p { color: #ccc; font-size: 1.2rem; }
-        @keyframes pulse { 0% { opacity: 0.8; transform: scale(1); } 50% { opacity: 1; transform: scale(1.05); } 100% { opacity: 0.8; transform: scale(1); } }
 
         /* 設定區 */
         #setup-view { padding: 40px; text-align: center; width: 100%; box-sizing: border-box; }
@@ -23,7 +17,7 @@
         
         .input-group { margin-bottom: 20px; text-align: left; }
         label { font-size: 0.85rem; color: #aaa; display: block; margin-bottom: 8px; font-weight: bold; }
-        input[type="password"], input[type="text"] { width: 100%; padding: 14px; border-radius: 10px; border: 1px solid #555; background: rgba(0,0,0,0.4); color: white; box-sizing: border-box; font-size: 1rem; }
+        input[type="password"], input[type="text"] { width: 100%; padding: 14px; border-radius: 10px; border: 1px solid #555; background: rgba(0,0,0,0.4); color: white; box-sizing: border-box; font-size: 1rem; text-align: center; letter-spacing: 1px;}
         
         /* Tab 切換 (3個) */
         .tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 25px; border-bottom: 1px solid #444; padding-bottom: 15px; }
@@ -55,15 +49,8 @@
         .btn-nav { background: transparent; border: 1px solid #666; color: #ccc; padding: 6px 15px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; gap: 5px; }
         .btn-nav:hover { color: white; border-color: white; }
         
-        .music-indicator { display: flex; gap: 3px; height: 15px; align-items: flex-end; margin-left: 10px; opacity: 0.5; }
-        .music-indicator.active { opacity: 1; }
-        .bar { width: 3px; background: var(--highlight); animation: none; }
-        .music-indicator.active .bar { animation: bounce 1.5s infinite ease-in-out; }
-        .bar:nth-child(1) { height: 60%; animation-delay: 0s; }
-        .bar:nth-child(2) { height: 100%; animation-delay: 0.2s; }
-        .bar:nth-child(3) { height: 50%; animation-delay: 0.4s; }
-        @keyframes bounce { 0%, 100% { height: 30%; } 50% { height: 100%; } }
-
+        .status-badge { background: #333; padding: 5px 15px; border-radius: 20px; font-size: 0.9rem; color: #aaa; font-weight: bold; }
+        
         #scene-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; overflow-y: auto; }
         #scene-emoji { font-size: 5rem; margin-bottom: 20px; filter: drop-shadow(0 0 20px rgba(255,255,255,0.2)); }
         #scene-text { font-size: 1.4rem; line-height: 1.6; background: rgba(255,255,255,0.08); padding: 30px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); width: 85%; max-width: 500px; }
@@ -85,23 +72,14 @@
 </head>
 <body>
 
-<div id="start-overlay" onclick="unlockAudioContext()">
-    <h1>👆 點擊畫面開始</h1>
-    <p>AI 智能搜題 • 專注音樂</p>
-</div>
-
 <div id="console">
     <div id="setup-view">
-        <h1 class="title">AI 遊戲生成機 v16.0</h1>
-        <div class="subtitle">圖片 • 文字 • 智能搜題 (Smart Search)</div>
+        <h1 class="title">AI 萬能遊戲機 v18.0</h1>
+        <div class="subtitle">全齡通用 • 自動適應難度</div>
         
         <div class="input-group">
-            <label>1. API Key (必填)</label>
+            <label>API Key (必填)</label>
             <input type="password" id="api-key" placeholder="貼上 API Key">
-        </div>
-        <div class="input-group">
-            <label>2. 指定模型 (選填)</label>
-            <input type="text" id="custom-model" placeholder="預設自動測試">
         </div>
         
         <div class="tabs">
@@ -113,7 +91,7 @@
         <div id="mode-image" class="mode-section active">
             <div class="file-upload">
                 <input type="file" id="image-input" accept="image/*" onchange="previewImage(this)">
-                <div id="file-label">點擊上傳圖片 📷</div>
+                <div id="file-label">點擊上傳圖片 (考卷/書籍) 📷</div>
             </div>
             <img id="preview" style="max-width: 150px; display: none; margin: 0 auto 15px auto; border-radius: 10px; border: 2px solid #555;">
         </div>
@@ -123,24 +101,20 @@
         </div>
 
         <div id="mode-search" class="mode-section">
-            <input type="text" id="search-input" placeholder="輸入關鍵字 (例如: 小五數學、多益英文...)" style="margin-top:20px; text-align:center;">
+            <input type="text" id="search-input" placeholder="輸入主題 (如: 多益閱讀、高中物理、Python基礎...)" style="margin-top:20px; text-align:center;">
             <div style="font-size: 0.8rem; color: #888; margin-top: 15px;">
-                💡 AI 將會運用龐大的資料庫，針對您輸入的主題自動生成考題。
+                💡 系統會自動分析您輸入的「主題」與「難度」，生成最適合的考題。
             </div>
         </div>
 
-        <button class="btn-main" id="generate-btn" onclick="startProcess()">🚀 生成 10 關測驗</button>
+        <button class="btn-main" id="generate-btn" onclick="startProcess()">🚀 立即生成</button>
         <div id="status-log"></div>
     </div>
 
     <div id="game-view">
         <div class="game-header">
             <div class="header-left">
-                <button class="btn-nav" onclick="goHome()">🏠 首頁</button>
-                <button class="btn-nav" id="music-toggle" onclick="toggleMusic()">🎵 音樂</button>
-                <div class="music-indicator" id="music-bars">
-                    <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-                </div>
+                <button class="btn-nav" onclick="goHome()">🏠 返回首頁</button>
             </div>
             <div id="hp-display" style="letter-spacing: 3px;">❤️❤️❤️❤️❤️</div>
             <div class="status-badge" id="level-display">Q 1 / 10</div>
@@ -159,77 +133,18 @@
     </div>
 </div>
 
-<audio id="bgm-player" loop></audio>
-
 <script>
     const keyInput = document.getElementById('api-key');
     if(localStorage.getItem('gemini_key')) keyInput.value = localStorage.getItem('gemini_key');
-    const modelInput = document.getElementById('custom-model');
-    if(localStorage.getItem('gemini_model')) modelInput.value = localStorage.getItem('gemini_model');
 
     let gameData = null;
     let currentStage = 0;
     let hp = 5;
     let pendingAction = null;
     let currentMode = 'image';
-    const FALLBACK_MODELS = ["gemini-2.0-flash-exp", "gemini-1.5-flash", "gemini-1.5-pro"];
-
-    // 音樂系統
-    const BGM_PLAYLIST = [
-        "https://upload.wikimedia.org/wikipedia/commons/3/35/Gymnopedie_No_1.mp3",
-        "https://upload.wikimedia.org/wikipedia/commons/2/23/Debussy_-_Clair_de_lune_-_Dave_Horn.mp3",
-        "https://upload.wikimedia.org/wikipedia/commons/8/86/Mozart_-_Sonata_No._16_in_C_Major_K545_-_I._Allegro.mp3"
-    ];
-
-    const audioPlayer = document.getElementById('bgm-player');
-    const musicIndicator = document.getElementById('music-bars');
-    const musicToggleBtn = document.getElementById('music-toggle');
-    let isMusicPlaying = false;
-
-    function unlockAudioContext() {
-        const overlay = document.getElementById('start-overlay');
-        overlay.style.opacity = '0';
-        setTimeout(() => overlay.style.display = 'none', 500);
-        const randomIndex = Math.floor(Math.random() * BGM_PLAYLIST.length);
-        audioPlayer.src = BGM_PLAYLIST[randomIndex];
-        audioPlayer.volume = 0.2;
-        audioPlayer.play().then(() => {
-            console.log("Audio unlocked!");
-            audioPlayer.pause();
-        }).catch(e => console.error("Unlock failed:", e));
-    }
-
-    function startMusic() {
-        audioPlayer.currentTime = 0;
-        audioPlayer.play().then(() => {
-            isMusicPlaying = true;
-            musicIndicator.classList.add('active');
-            musicToggleBtn.innerHTML = "🎵 音樂開";
-            log("🎵 專注音樂已啟動", "success");
-        }).catch(e => {
-            log("⚠️ 音樂播放失敗", "error");
-        });
-    }
-
-    function toggleMusic() {
-        if (isMusicPlaying) {
-            audioPlayer.pause();
-            isMusicPlaying = false;
-            musicIndicator.classList.remove('active');
-            musicToggleBtn.innerHTML = "🔇 音樂關";
-        } else {
-            audioPlayer.play();
-            isMusicPlaying = true;
-            musicIndicator.classList.add('active');
-            musicToggleBtn.innerHTML = "🎵 音樂開";
-        }
-    }
-
-    function stopMusic() {
-        audioPlayer.pause();
-        isMusicPlaying = false;
-        musicIndicator.classList.remove('active');
-    }
+    
+    // --- 寫死模型 ID ---
+    const TARGET_MODEL = "gemini-2.5-flash";
 
     function switchTab(mode) {
         currentMode = mode;
@@ -249,7 +164,6 @@
 
     function goHome() {
         if (confirm("確定要結束遊戲返回首頁嗎？")) {
-            stopMusic();
             location.reload();
         }
     }
@@ -278,12 +192,9 @@
 
     async function startProcess() {
         const apiKey = keyInput.value.trim();
-        let customModel = document.getElementById('custom-model').value.trim();
         document.getElementById('status-log').innerHTML = '';
         
         if (!apiKey) return log("請輸入 API Key", "error");
-
-        startMusic();
 
         let inputData = null;
         let isImage = false;
@@ -302,7 +213,6 @@
             inputData = textVal;
             isImage = false;
         } else {
-            // Search Mode
             const searchVal = document.getElementById('search-input').value.trim();
             if (!searchVal) return log("請輸入搜尋關鍵字", "error");
             inputData = searchVal;
@@ -311,42 +221,19 @@
         }
 
         localStorage.setItem('gemini_key', apiKey);
-        localStorage.setItem('gemini_model', customModel);
         document.getElementById('generate-btn').disabled = true;
 
         try {
-            let modelsToTry = [];
-            if (customModel) {
-                if (customModel.startsWith('models/')) customModel = customModel.replace('models/', '');
-                modelsToTry = [customModel];
-                log(`指定使用: ${customModel}`);
-            } else {
-                modelsToTry = FALLBACK_MODELS;
-                log("自動選擇最佳模型...");
-            }
-
-            let successResult = null;
-            for (const modelName of modelsToTry) {
-                try {
-                    log(`連接 ${modelName}...`);
-                    const result = await callGemini(apiKey, modelName, inputData, isImage, isSearch);
-                    log(`✅ 成功！生成測驗數據...`, "success");
-                    successResult = result;
-                    break; 
-                } catch (err) {
-                    if (err.message.includes("404")) log(`❌ ${modelName} 未回應`, "error");
-                    else log(`⚠️ ${err.message}`, "error");
-                }
-            }
-
-            if (!successResult) throw new Error("所有模型連接失敗");
-
-            gameData = successResult;
+            log(`連接模型: ${TARGET_MODEL}...`);
+            const result = await callGemini(apiKey, TARGET_MODEL, inputData, isImage, isSearch);
+            log(`✅ 成功！生成測驗數據...`, "success");
+            
+            gameData = result;
             setTimeout(startGame, 1000);
 
         } catch (e) {
             console.error(e);
-            log("終止: " + e.message, "error");
+            log("錯誤: " + e.message, "error");
             document.getElementById('generate-btn').disabled = false;
         }
     }
@@ -372,7 +259,7 @@
         });
     }
 
-    // --- 核心 AI 邏輯 (含智能搜尋 Prompt) ---
+    // --- 核心 AI 邏輯 (更新 Prompt) ---
     async function callGemini(key, model, data, isImage, isSearch) {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
         
@@ -383,25 +270,32 @@
             userPart = { inline_data: { mime_type: "image/jpeg", data: data } };
             systemPrompt = "Analyze the image and generate a quiz.";
         } else if (isSearch) {
-            // 智能搜尋專用 Prompt
             userPart = { text: `Topic: ${data}` };
             systemPrompt = `
-                You are an expert teacher and curriculum designer. 
-                The user wants to practice the topic: "${data}".
-                Using your internal knowledge base, simulate a web search and generate relevant, high-quality quiz questions for this specific topic and difficulty level.
-                If the topic is "TOEIC", use business English. If "Grade 5 Math", use appropriate math problems.
+                You are an Expert Quiz Master.
+                The user wants a quiz on the topic: "${data}".
+                
+                CRITICAL INSTRUCTION:
+                1. IDENTIFY THE TARGET AUDIENCE from the topic.
+                   - If topic is "Calculus", difficulty = University.
+                   - If topic is "TOEIC", difficulty = Professional/Adult.
+                   - If topic is "Kindergarten Math", difficulty = Easy.
+                2. Using your internal knowledge base, generate high-quality questions matching this difficulty.
             `;
         } else {
             userPart = { text: `Material: ${data}` };
-            systemPrompt = "Analyze the text material and generate a quiz.";
+            systemPrompt = "Analyze the text material and generate a quiz suitable for the content's complexity.";
         }
 
         const fullPrompt = `
             ${systemPrompt}
-            Target Audience: 10-year-old child in Taiwan (Traditional Chinese).
-            Task: Generate exactly 10 stages (questions).
-            Question Types: Mix of 'choice' (Multiple Choice) and 'fill' (Fill-in-the-blank).
-            Randomness: Ensure questions cover different aspects of the topic.
+            
+            TASK REQUIREMENTS:
+            1. Language: Traditional Chinese (繁體中文).
+            2. Quantity: Exactly 10 stages.
+            3. Question Types: Mix of 'choice' (Multiple Choice) and 'fill' (Fill-in-the-blank) where appropriate.
+            4. Randomness: Ensure broad coverage of the topic.
+            5. Feedback: Provide detailed explanations for BOTH correct and incorrect answers.
             
             JSON Format:
             {
@@ -422,7 +316,7 @@
             body: JSON.stringify({ contents: [{ parts: [{ text: fullPrompt }, userPart] }] })
         });
 
-        if (!response.ok) throw new Error(response.status);
+        if (!response.ok) throw new Error(`API Error ${response.status}`);
         const resData = await response.json();
         const rawText = resData.candidates[0].content.parts[0].text;
         const jsonString = rawText.substring(rawText.indexOf('{'), rawText.lastIndexOf('}') + 1);
@@ -438,7 +332,7 @@
 
     function renderStage() {
         if (currentStage >= gameData.stages.length) {
-            showOverlay("🏆", "恭喜通關！\n全能小博士就是你！", true); return;
+            showOverlay("🏆", "恭喜通關！\n挑戰成功！", true); return;
         }
         const stage = gameData.stages[currentStage];
         document.getElementById('level-display').innerText = `Q ${currentStage+1} / 10`;
@@ -517,7 +411,7 @@
         const btn = document.querySelector('#overlay button');
         
         if(isWin || isDead) {
-            pendingAction = () => { stopMusic(); location.reload(); };
+            pendingAction = () => { location.reload(); };
             btn.innerText = "🏠 返回首頁製作新遊戲";
         } else if(isNext) {
             pendingAction = () => { ov.style.display='none'; currentStage++; renderStage(); };
