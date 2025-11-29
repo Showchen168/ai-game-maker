@@ -3,24 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 萬能遊戲機 v18.0 (全齡通用版)</title>
+    <title>AI 遊戲生成機 v18.0 (榮耀晉升版)</title>
     <style>
-        :root { --bg: #0f0c29; --panel: #302b63; --accent: #cb2d3e; --highlight: #ef473a; --text: #eee; }
+        :root { --bg: #0f0c29; --panel: #302b63; --accent: #cb2d3e; --highlight: #ef473a; --text: #eee; --gold: #ffd700; --exp: #00e676; }
         body { font-family: '微軟正黑體', sans-serif; background: linear-gradient(135deg, #24243e 0%, #302b63 100%); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; overflow: hidden; }
         
         #console { width: 100%; max-width: 700px; background: rgba(0,0,0,0.6); border-radius: 20px; backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 0 50px rgba(0,0,0,0.8); overflow: hidden; display: flex; flex-direction: column; position: relative; transition: height 0.3s; z-index: 5; }
 
+        /* --- 玩家檔案卡 (New) --- */
+        #profile-card { background: rgba(0,0,0,0.5); padding: 15px; margin: 20px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: space-between; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .rank-badge { font-size: 2.5rem; margin-right: 15px; filter: drop-shadow(0 0 10px rgba(255,215,0,0.5)); }
+        .profile-info { flex: 1; text-align: left; }
+        .profile-name { font-size: 1.1rem; font-weight: bold; color: var(--highlight); margin-bottom: 5px; }
+        .coin-display { font-size: 0.9rem; color: var(--gold); font-weight: bold; display: flex; align-items: center; gap: 5px; }
+        
+        /* 經驗條 */
+        .exp-container { width: 100%; background: #444; height: 8px; border-radius: 4px; margin-top: 5px; overflow: hidden; position: relative; }
+        .exp-fill { height: 100%; background: var(--exp); width: 0%; transition: width 0.5s ease-out; box-shadow: 0 0 10px var(--exp); }
+        .level-text { font-size: 0.8rem; color: #aaa; margin-left: 10px; white-space: nowrap; }
+
         /* 設定區 */
-        #setup-view { padding: 40px; text-align: center; width: 100%; box-sizing: border-box; }
-        h1.title { margin: 0 0 10px 0; font-size: 2rem; background: -webkit-linear-gradient(#fff, #aaa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .subtitle { color: #888; font-size: 0.9rem; margin-bottom: 30px; }
+        #setup-view { padding: 20px 40px 40px 40px; text-align: center; width: 100%; box-sizing: border-box; }
+        h1.title { margin: 0 0 10px 0; font-size: 1.8rem; background: -webkit-linear-gradient(#fff, #aaa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .subtitle { color: #888; font-size: 0.8rem; margin-bottom: 20px; }
         
-        .input-group { margin-bottom: 20px; text-align: left; }
-        label { font-size: 0.85rem; color: #aaa; display: block; margin-bottom: 8px; font-weight: bold; }
-        input[type="password"], input[type="text"] { width: 100%; padding: 14px; border-radius: 10px; border: 1px solid #555; background: rgba(0,0,0,0.4); color: white; box-sizing: border-box; font-size: 1rem; text-align: center; letter-spacing: 1px;}
+        .input-group { margin-bottom: 15px; text-align: left; }
+        input[type="password"], input[type="text"] { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #555; background: rgba(0,0,0,0.4); color: white; box-sizing: border-box; font-size: 1rem; text-align: center; letter-spacing: 1px;}
         
-        /* Tab 切換 (3個) */
-        .tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 25px; border-bottom: 1px solid #444; padding-bottom: 15px; }
+        .tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #444; padding-bottom: 10px; }
         .tab-btn { background: transparent; border: 1px solid #444; padding: 8px 15px; border-radius: 50px; color: #aaa; cursor: pointer; transition: 0.3s; font-size: 0.9rem; }
         .tab-btn.active { background: var(--highlight); color: white; border-color: var(--highlight); }
 
@@ -28,13 +38,13 @@
         .mode-section.active { display: block; animation: fadeIn 0.4s; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        .file-upload { border: 2px dashed #444; padding: 40px; border-radius: 15px; cursor: pointer; position: relative; margin: 10px 0; background: rgba(255,255,255,0.02); transition: 0.3s; }
+        .file-upload { border: 2px dashed #444; padding: 30px; border-radius: 15px; cursor: pointer; position: relative; margin: 10px 0; background: rgba(255,255,255,0.02); transition: 0.3s; }
         .file-upload:hover { border-color: var(--highlight); background: rgba(233,69,96,0.05); }
         .file-upload input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
         
-        textarea { width: 100%; height: 150px; padding: 15px; border-radius: 10px; border: 1px solid #444; background: rgba(0,0,0,0.4); color: white; box-sizing: border-box; resize: vertical; font-size: 1rem; }
+        textarea { width: 100%; height: 120px; padding: 15px; border-radius: 10px; border: 1px solid #444; background: rgba(0,0,0,0.4); color: white; box-sizing: border-box; resize: vertical; font-size: 1rem; }
 
-        .btn-main { background: var(--highlight); color: white; border: none; padding: 16px 50px; font-size: 1.2rem; border-radius: 50px; cursor: pointer; width: 100%; font-weight: bold; transition: 0.3s; margin-top: 25px; box-shadow: 0 5px 20px rgba(233,69,96,0.3); }
+        .btn-main { background: var(--highlight); color: white; border: none; padding: 16px 50px; font-size: 1.2rem; border-radius: 50px; cursor: pointer; width: 100%; font-weight: bold; transition: 0.3s; margin-top: 20px; box-shadow: 0 5px 20px rgba(233,69,96,0.3); }
         .btn-main:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(233,69,96,0.5); }
         .btn-main:disabled { background: #555; cursor: not-allowed; }
 
@@ -43,43 +53,59 @@
 
         /* 遊戲區 */
         #game-view { display: none; flex-direction: column; height: 750px; width: 100%; position: relative; }
-        
         .game-header { padding: 15px 20px; background: rgba(0,0,0,0.4); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .header-left { display: flex; gap: 10px; align-items: center; }
-        .btn-nav { background: transparent; border: 1px solid #666; color: #ccc; padding: 6px 15px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; gap: 5px; }
+        .btn-nav { background: transparent; border: 1px solid #666; color: #ccc; padding: 6px 15px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; }
         .btn-nav:hover { color: white; border-color: white; }
-        
         .status-badge { background: #333; padding: 5px 15px; border-radius: 20px; font-size: 0.9rem; color: #aaa; font-weight: bold; }
         
         #scene-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; overflow-y: auto; }
         #scene-emoji { font-size: 5rem; margin-bottom: 20px; filter: drop-shadow(0 0 20px rgba(255,255,255,0.2)); }
         #scene-text { font-size: 1.4rem; line-height: 1.6; background: rgba(255,255,255,0.08); padding: 30px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); width: 85%; max-width: 500px; }
-        
         #action-area { padding: 30px; background: rgba(0,0,0,0.2); min-height: 180px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         
         .choices-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; max-width: 600px; }
         .btn-choice { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 18px; border-radius: 12px; cursor: pointer; font-size: 1.1rem; transition: 0.2s; font-weight: bold; }
         .btn-choice:hover { background: rgba(255,255,255,0.15); border-color: var(--highlight); transform: translateY(-2px); }
-        
         .input-area { width: 100%; max-width: 400px; display: flex; gap: 10px; }
         #answer-input { flex: 1; padding: 15px; font-size: 1.2rem; border-radius: 10px; border: 2px solid #555; background: rgba(0,0,0,0.5); color: white; text-align: center; }
         .btn-submit { background: var(--highlight); color: white; border: none; padding: 0 30px; border-radius: 10px; font-weight: bold; cursor: pointer; }
 
+        /* 遮罩 & 獎勵動畫 */
         #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: none; flex-direction: column; justify-content: center; align-items: center; text-align: center; z-index: 20; padding: 20px; box-sizing: border-box; }
-        #overlay h2 { font-size: 3.5rem; margin: 0 0 20px 0; }
-        #overlay p { font-size: 1.3rem; margin: 0 0 35px 0; line-height: 1.6; max-width: 80%; background: rgba(255,255,255,0.1); padding: 25px; border-radius: 15px; }
+        #overlay h2 { font-size: 3rem; margin: 0 0 10px 0; }
+        #overlay p { font-size: 1.2rem; margin: 0 0 20px 0; max-width: 80%; line-height: 1.5; color: #ddd; }
+        
+        /* 結算獎勵面板 */
+        .reward-box { background: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; border: 1px solid gold; margin-bottom: 20px; animation: slideUp 0.5s; }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .reward-item { font-size: 1.2rem; margin: 5px 0; color: #fff; text-shadow: 0 0 5px rgba(0,0,0,0.5); }
+        .reward-highlight { color: var(--gold); font-weight: bold; font-size: 1.5rem; }
     </style>
 </head>
 <body>
 
 <div id="console">
+    
+    <div id="profile-card">
+        <div class="rank-badge" id="rank-icon">🥉</div>
+        <div class="profile-info">
+            <div class="profile-name" id="rank-name">銅牌冒險家</div>
+            <div class="coin-display">💰 <span id="coin-count">0</span></div>
+            <div style="display:flex; align-items:center;">
+                <div class="exp-container">
+                    <div class="exp-fill" id="exp-bar"></div>
+                </div>
+                <div class="level-text">Lv.<span id="level-num">1</span></div>
+            </div>
+        </div>
+    </div>
+
     <div id="setup-view">
-        <h1 class="title">AI 萬能遊戲機 v18.0</h1>
-        <div class="subtitle">全齡通用 • 自動適應難度</div>
+        <h1 class="title">AI 遊戲生成機 v18.0</h1>
+        <div class="subtitle">全齡通用 • 經驗升級 • 金幣獎勵</div>
         
         <div class="input-group">
-            <label>API Key (必填)</label>
-            <input type="password" id="api-key" placeholder="貼上 API Key">
+            <input type="password" id="api-key" placeholder="在此貼上 API Key">
         </div>
         
         <div class="tabs">
@@ -91,7 +117,7 @@
         <div id="mode-image" class="mode-section active">
             <div class="file-upload">
                 <input type="file" id="image-input" accept="image/*" onchange="previewImage(this)">
-                <div id="file-label">點擊上傳圖片 (考卷/書籍) 📷</div>
+                <div id="file-label">點擊上傳圖片 📷</div>
             </div>
             <img id="preview" style="max-width: 150px; display: none; margin: 0 auto 15px auto; border-radius: 10px; border: 2px solid #555;">
         </div>
@@ -101,20 +127,20 @@
         </div>
 
         <div id="mode-search" class="mode-section">
-            <input type="text" id="search-input" placeholder="輸入主題 (如: 多益閱讀、高中物理、Python基礎...)" style="margin-top:20px; text-align:center;">
+            <input type="text" id="search-input" placeholder="輸入主題 (如: 高中歷史、多益聽力...)" style="margin-top:20px; text-align:center;">
             <div style="font-size: 0.8rem; color: #888; margin-top: 15px;">
-                💡 系統會自動分析您輸入的「主題」與「難度」，生成最適合的考題。
+                💡 依照主題生成考題，難度會自動適應。
             </div>
         </div>
 
-        <button class="btn-main" id="generate-btn" onclick="startProcess()">🚀 立即生成</button>
+        <button class="btn-main" id="generate-btn" onclick="startProcess()">🚀 開始挑戰</button>
         <div id="status-log"></div>
     </div>
 
     <div id="game-view">
         <div class="game-header">
             <div class="header-left">
-                <button class="btn-nav" onclick="goHome()">🏠 返回首頁</button>
+                <button class="btn-nav" onclick="goHome()">🏠 放棄返回</button>
             </div>
             <div id="hp-display" style="letter-spacing: 3px;">❤️❤️❤️❤️❤️</div>
             <div class="status-badge" id="level-display">Q 1 / 10</div>
@@ -128,12 +154,72 @@
 
     <div id="overlay">
         <h2 id="ov-icon">🎉</h2>
-        <p id="ov-text">訊息</p>
+        <div id="reward-panel"></div> <p id="ov-text">訊息</p>
         <button class="btn-main" style="width: auto;" onclick="closeOverlay()">繼續</button>
     </div>
 </div>
 
 <script>
+    // --- 玩家資料系統 ---
+    const TARGET_MODEL = "gemini-2.5-flash";
+    
+    // 預設資料
+    let player = {
+        level: 1,
+        xp: 0,
+        coins: 0,
+        totalGames: 0
+    };
+
+    // 載入存檔
+    function loadProfile() {
+        const saved = localStorage.getItem('ai_game_profile_v18');
+        if (saved) {
+            player = JSON.parse(saved);
+        }
+        updateProfileUI();
+    }
+
+    // 儲存存檔
+    function saveProfile() {
+        localStorage.setItem('ai_game_profile_v18', JSON.stringify(player));
+        updateProfileUI();
+    }
+
+    // 計算排位與 UI 更新
+    function updateProfileUI() {
+        // 升級邏輯: 每級需要 100 * level 的經驗 (簡單線性成長)
+        // 為了簡單好玩，我們設定每 500 XP 升一級
+        const XP_PER_LEVEL = 500;
+        
+        while (player.xp >= XP_PER_LEVEL) {
+            player.xp -= XP_PER_LEVEL;
+            player.level++;
+            // 可以在這裡加個升級特效 (未來擴充)
+        }
+
+        // 排位判定
+        let rankName = "銅牌冒險家";
+        let rankIcon = "🥉";
+        let rankColor = "#cd7f32";
+
+        if (player.level >= 20) { rankName = "鑽石傳說"; rankIcon = "💎"; rankColor = "#b9f2ff"; }
+        else if (player.level >= 15) { rankName = "白金宗師"; rankIcon = "💠"; rankColor = "#e5e4e2"; }
+        else if (player.level >= 10) { rankName = "黃金大師"; rankIcon = "🥇"; rankColor = "#ffd700"; }
+        else if (player.level >= 5) { rankName = "銀牌勇者"; rankIcon = "🥈"; rankColor = "#c0c0c0"; }
+
+        // 更新 DOM
+        document.getElementById('rank-icon').innerText = rankIcon;
+        document.getElementById('rank-name').innerText = rankName;
+        document.getElementById('rank-name').style.color = rankColor;
+        document.getElementById('coin-count').innerText = player.coins;
+        document.getElementById('level-num').innerText = player.level;
+        
+        const xpPercent = (player.xp / XP_PER_LEVEL) * 100;
+        document.getElementById('exp-bar').style.width = `${xpPercent}%`;
+    }
+
+    // --- 遊戲邏輯變數 ---
     const keyInput = document.getElementById('api-key');
     if(localStorage.getItem('gemini_key')) keyInput.value = localStorage.getItem('gemini_key');
 
@@ -142,9 +228,9 @@
     let hp = 5;
     let pendingAction = null;
     let currentMode = 'image';
-    
-    // --- 寫死模型 ID ---
-    const TARGET_MODEL = "gemini-2.5-flash";
+
+    // 初始化
+    loadProfile();
 
     function switchTab(mode) {
         currentMode = mode;
@@ -163,7 +249,7 @@
     }
 
     function goHome() {
-        if (confirm("確定要結束遊戲返回首頁嗎？")) {
+        if (confirm("確定要結束遊戲返回首頁嗎？(將不會獲得獎勵)")) {
             location.reload();
         }
     }
@@ -174,7 +260,6 @@
         const line = document.createElement('div');
         line.className = `log-line log-${type}`;
         line.innerHTML = `> ${msg}`;
-        logBox.appendChild(line);
         logBox.scrollTop = logBox.scrollHeight;
     }
 
@@ -214,7 +299,7 @@
             isImage = false;
         } else {
             const searchVal = document.getElementById('search-input').value.trim();
-            if (!searchVal) return log("請輸入搜尋關鍵字", "error");
+            if (!searchVal) return log("請輸入關鍵字", "error");
             inputData = searchVal;
             isImage = false;
             isSearch = true;
@@ -224,9 +309,9 @@
         document.getElementById('generate-btn').disabled = true;
 
         try {
-            log(`連接模型: ${TARGET_MODEL}...`);
+            log(`連接 Gemini 2.5 Flash...`);
             const result = await callGemini(apiKey, TARGET_MODEL, inputData, isImage, isSearch);
-            log(`✅ 成功！生成測驗數據...`, "success");
+            log(`✅ 成功！題目生成完畢`, "success");
             
             gameData = result;
             setTimeout(startGame, 1000);
@@ -259,7 +344,6 @@
         });
     }
 
-    // --- 核心 AI 邏輯 (更新 Prompt) ---
     async function callGemini(key, model, data, isImage, isSearch) {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
         
@@ -268,42 +352,31 @@
 
         if (isImage) {
             userPart = { inline_data: { mime_type: "image/jpeg", data: data } };
-            systemPrompt = "Analyze the image and generate a quiz.";
+            systemPrompt = "Analyze the image content.";
         } else if (isSearch) {
             userPart = { text: `Topic: ${data}` };
-            systemPrompt = `
-                You are an Expert Quiz Master.
-                The user wants a quiz on the topic: "${data}".
-                
-                CRITICAL INSTRUCTION:
-                1. IDENTIFY THE TARGET AUDIENCE from the topic.
-                   - If topic is "Calculus", difficulty = University.
-                   - If topic is "TOEIC", difficulty = Professional/Adult.
-                   - If topic is "Kindergarten Math", difficulty = Easy.
-                2. Using your internal knowledge base, generate high-quality questions matching this difficulty.
-            `;
+            systemPrompt = `You are an expert teacher. Topic: "${data}". Simulate a web search and generate questions.`;
         } else {
             userPart = { text: `Material: ${data}` };
-            systemPrompt = "Analyze the text material and generate a quiz suitable for the content's complexity.";
+            systemPrompt = "Analyze the text material.";
         }
 
+        // 修改 Prompt：移除 10 歲小孩限制，強調適應性
         const fullPrompt = `
             ${systemPrompt}
-            
-            TASK REQUIREMENTS:
-            1. Language: Traditional Chinese (繁體中文).
-            2. Quantity: Exactly 10 stages.
-            3. Question Types: Mix of 'choice' (Multiple Choice) and 'fill' (Fill-in-the-blank) where appropriate.
-            4. Randomness: Ensure broad coverage of the topic.
-            5. Feedback: Provide detailed explanations for BOTH correct and incorrect answers.
+            TASK: Generate exactly 10 quiz stages.
+            AUDIENCE: Adapt difficulty based on the topic provided (e.g., Calculus -> Hard, Kid Math -> Easy).
+            LANGUAGE: Traditional Chinese (繁體中文).
+            TYPES: Mix 'choice' and 'fill'.
+            FEEDBACK: Detailed explanations are required for both correct/wrong answers.
             
             JSON Format:
             {
                 "stages": [
                     {
                         "type": "choice", "emoji": "🔢", "text": "Question",
-                        "options": [{ "text": "A", "correct": false, "feedback": "Why" }, { "text": "B", "correct": true, "feedback": "Why" }],
-                        "answer": "correct_answer_string", "feedback_correct": "Good", "feedback_wrong": "Bad"
+                        "options": [{ "text": "A", "correct": false, "feedback": "..." }, { "text": "B", "correct": true, "feedback": "..." }],
+                        "answer": "answer_if_fill", "feedback_correct": "...", "feedback_wrong": "..."
                     }
                 ]
             }
@@ -332,7 +405,9 @@
 
     function renderStage() {
         if (currentStage >= gameData.stages.length) {
-            showOverlay("🏆", "恭喜通關！\n挑戰成功！", true); return;
+            // 通關邏輯
+            handleGameClear();
+            return;
         }
         const stage = gameData.stages[currentStage];
         document.getElementById('level-display').innerText = `Q ${currentStage+1} / 10`;
@@ -382,7 +457,7 @@
             showOverlay("⭕", stage.feedback_correct, false, true);
         } else {
             hp--; updateHP();
-            if(hp<=0) showOverlay("💀", "遊戲結束...\n" + stage.feedback_wrong, false, false, true);
+            if(hp<=0) handleGameOver(stage.feedback_wrong);
             else showOverlay("❌", stage.feedback_wrong, false, false);
         }
     }
@@ -392,7 +467,7 @@
             showOverlay("⭕", opt.feedback, false, true);
         } else {
             hp--; updateHP();
-            if(hp<=0) showOverlay("💀", "遊戲結束...\n" + opt.feedback, false, false, true);
+            if(hp<=0) handleGameOver(opt.feedback);
             else showOverlay("❌", opt.feedback, false, false);
         }
     }
@@ -404,15 +479,65 @@
         document.getElementById('hp-display').innerText = h;
     }
 
-    function showOverlay(icon, txt, isWin, isNext, isDead) {
+    // --- 結算處理 (核心新功能) ---
+    function handleGameClear() {
+        // 計算獎勵
+        const baseXP = 100;
+        const bonusCoins = hp * 10;
+        const bonusXP = hp * 20;
+        const totalXP = baseXP + bonusXP;
+
+        // 更新玩家資料
+        player.coins += bonusCoins;
+        player.xp += totalXP;
+        player.totalGames++;
+        saveProfile(); // 存檔
+
+        // 生成獎勵 HTML
+        const rewardHTML = `
+            <div class="reward-box">
+                <div class="reward-item">通關經驗: +${baseXP} XP</div>
+                <div class="reward-item">生命加成: +${bonusXP} XP</div>
+                <div class="reward-item">賺取金幣: <span class="reward-highlight">💰 +${bonusCoins}</span></div>
+                <hr style="border:0; border-top:1px solid #555; margin:10px 0;">
+                <div class="reward-item" style="color:#00e676;">總計獲得: ${totalXP} XP</div>
+            </div>
+        `;
+        
+        document.getElementById('reward-panel').innerHTML = rewardHTML;
+        showOverlay("🏆", "恭喜通關！結算獎勵如下：", true, false);
+    }
+
+    function handleGameOver(reason) {
+        // 失敗給予安慰獎
+        const pityXP = 10;
+        player.xp += pityXP;
+        saveProfile();
+
+        const rewardHTML = `
+            <div class="reward-box" style="border-color: #ff5252;">
+                <div class="reward-item">安慰獎勵: +${pityXP} XP</div>
+                <div class="reward-item" style="font-size:0.9rem; color:#aaa;">別灰心，下次一定行！</div>
+            </div>
+        `;
+        document.getElementById('reward-panel').innerHTML = rewardHTML;
+        showOverlay("💀", "挑戰失敗...\n" + reason, false, false, true); // true flag for dead
+    }
+
+    function showOverlay(icon, txt, isWin, isNext, isDead=false) {
         const ov = document.getElementById('overlay'); ov.style.display = 'flex';
         document.getElementById('ov-icon').innerText = icon;
         document.getElementById('ov-text').innerText = txt;
         const btn = document.querySelector('#overlay button');
         
+        // 如果不是結算畫面，隱藏獎勵面板
+        if (!isWin && !isDead) {
+            document.getElementById('reward-panel').innerHTML = "";
+        }
+
         if(isWin || isDead) {
             pendingAction = () => { location.reload(); };
-            btn.innerText = "🏠 返回首頁製作新遊戲";
+            btn.innerText = "🏠 返回首頁 (已存檔)";
         } else if(isNext) {
             pendingAction = () => { ov.style.display='none'; currentStage++; renderStage(); };
             btn.innerText = "下一關";
