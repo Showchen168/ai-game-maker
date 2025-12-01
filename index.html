@@ -112,8 +112,8 @@
 
     <div id="setup-view">
         <h1 class="title">AI 遊戲生成機 v22.1</h1>
-        <div class="subtitle">選項排序修復 • Google 聯網 • 智能搜題 • 輕鬆愉快音樂</div>
-        <div class="music-note">🎵 每次重新整理頁面都會隨機播放一首 YouTube 輕音樂，讓冒險保持明亮的節奏。</div>
+        <div class="subtitle">選項排序修復 • Google 聯網 • 智能搜題 • 周杰倫《晴天》主題曲</div>
+        <div class="music-note">🎵 現在改為播放周杰倫《晴天》，在熟悉的旋律中展開你的冒險！</div>
         
         <div class="input-group">
             <input type="password" id="api-key" placeholder="在此貼上 API Key (自動儲存)">
@@ -190,13 +190,11 @@
     const HEAL_COST = 30;
     const STREAK_REWARD = 5;
 
-    const YT_TRACKS = [
-        "5qap5aO4i9A", // lofi hip hop radio
-        "DWcJFNfaw9c", // lofi beats
-        "jfKfPfyJRdk", // chill beats to relax/study to
-        "kgx4WGK0oNU", // ambient focus
-        "6uddGul0oAc"  // peaceful piano
-    ];
+    // 主題曲：周杰倫《晴天》
+    const THEME_TRACK = {
+        videoId: "StEJrZ9TQNw",
+        label: "周杰倫 - 晴天"
+    };
 
     let ytPlayer = null;
     let musicRequested = false;
@@ -209,23 +207,11 @@
         document.head.appendChild(tag);
     }
 
-    function pickRandomTrack() {
-        return YT_TRACKS[Math.floor(Math.random() * YT_TRACKS.length)];
-    }
-
-    function playRandomTrack() {
-        if (!ytPlayer || typeof ytPlayer.loadVideoById !== 'function') return;
-        const track = pickRandomTrack();
-        ytPlayer.loadVideoById({ videoId: track, suggestedQuality: 'small' });
-        ytPlayer.setLoop(false);
-    }
-
     function startYouTubeMusic() {
         if (musicRequested) return;
         musicRequested = true;
         loadYouTubeAPI();
         if (ytPlayer && ytPlayer.playVideo) {
-            playRandomTrack();
             ytPlayer.playVideo();
         }
     }
@@ -234,25 +220,26 @@
         ytPlayer = new YT.Player('music-player', {
             height: '0',
             width: '0',
-            videoId: pickRandomTrack(),
+            videoId: THEME_TRACK.videoId,
             playerVars: {
                 autoplay: 0,
                 controls: 0,
                 disablekb: 1,
                 rel: 0,
-                modestbranding: 1
+                modestbranding: 1,
+                loop: 1,
+                playlist: THEME_TRACK.videoId
             },
             events: {
                 onReady: (event) => {
                     event.target.setVolume(20);
                     if (musicRequested) {
-                        playRandomTrack();
                         event.target.playVideo();
                     }
                 },
                 onStateChange: (event) => {
                     if (event.data === YT.PlayerState.ENDED) {
-                        playRandomTrack();
+                        event.target.seekTo(0);
                     }
                 }
             }
@@ -302,9 +289,8 @@
     let pendingAction = null;
     let currentMode = 'image';
 
-    document.addEventListener('DOMContentLoaded', startYouTubeMusic);
     ['click', 'touchstart', 'keydown'].forEach(evt => {
-        document.addEventListener(evt, () => startYouTubeMusic());
+        document.addEventListener(evt, startYouTubeMusic, { once: true });
     });
 
     loadProfile();
