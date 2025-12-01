@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 遊戲生成機 v22.0 (專注音樂版)</title>
+    <title>AI 遊戲生成機 v22.1 (專注音樂刷新版)</title>
     <style>
         :root { --bg: #0f0c29; --panel: #302b63; --accent: #cb2d3e; --highlight: #ef473a; --text: #eee; --gold: #ffd700; --exp: #00e676; }
         
@@ -27,6 +27,7 @@
         #setup-view { padding: 30px; text-align: center; width: 100%; box-sizing: border-box; }
         h1.title { margin: 0 0 5px 0; font-size: 1.6rem; background: -webkit-linear-gradient(#fff, #aaa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .subtitle { color: #888; font-size: 0.8rem; margin-bottom: 20px; }
+        .music-note { color: #9cd1ff; font-size: 0.9rem; background: rgba(156,209,255,0.08); border: 1px dashed rgba(156,209,255,0.4); padding: 10px 12px; border-radius: 12px; margin-bottom: 18px; line-height: 1.4; }
         
         .input-group { margin-bottom: 15px; text-align: left; }
         input[type="password"], input[type="text"] { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #555; background: rgba(0,0,0,0.4); color: white; box-sizing: border-box; font-size: 1rem; text-align: center; letter-spacing: 1px;}
@@ -110,8 +111,9 @@
     </div>
 
     <div id="setup-view">
-        <h1 class="title">AI 遊戲生成機 v22.0</h1>
+        <h1 class="title">AI 遊戲生成機 v22.1</h1>
         <div class="subtitle">選項排序修復 • Google 聯網 • 智能搜題 • 專注音樂</div>
+        <div class="music-note">🎵 每次重新整理頁面都會為你隨機生成一段全新的專注音樂，保持專注又不失新鮮感。</div>
         
         <div class="input-group">
             <input type="password" id="api-key" placeholder="在此貼上 API Key (自動儲存)">
@@ -197,7 +199,7 @@
         return audioCtx;
     }
 
-    function playFocusChord(baseFreq) {
+    function playFocusChord(baseFreq, palette) {
         const ctx = initAudioContext();
         if (!ctx) return;
         const now = ctx.currentTime;
@@ -205,7 +207,7 @@
         chordGain.gain.value = 0.0001;
         chordGain.connect(ctx.destination);
 
-        const scale = [0, 3, 5, 7, 10].sort(() => Math.random() - 0.5);
+        const scale = (palette || [0, 3, 5, 7, 10]).sort(() => Math.random() - 0.5);
         scale.slice(0, 3).forEach((semi, idx) => {
             const osc = ctx.createOscillator();
             osc.type = 'sine';
@@ -223,14 +225,27 @@
         chordGain.gain.linearRampToValueAtTime(0, now + 3);
     }
 
+    function generateFocusProfile() {
+        const palettes = [
+            [0, 3, 5, 7, 10],
+            [0, 4, 7, 9, 12],
+            [0, 2, 7, 11, 14],
+        ];
+        return {
+            base: 200 + Math.random() * 120,
+            palette: palettes[Math.floor(Math.random() * palettes.length)]
+        };
+    }
+
     function startBackgroundMusic() {
         if (musicTimer) return;
         const ctx = initAudioContext();
         if (!ctx) return;
-        const base = 220 + Math.random() * 80;
-        playFocusChord(base);
+        const focusProfile = generateFocusProfile();
+        const { base, palette } = focusProfile;
+        playFocusChord(base, palette);
         musicTimer = setInterval(() => {
-            playFocusChord(base + Math.random() * 30 - 15);
+            playFocusChord(base + Math.random() * 30 - 15, palette);
         }, 3200 + Math.random() * 600);
     }
 
