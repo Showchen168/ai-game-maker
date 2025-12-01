@@ -198,6 +198,9 @@
 
     let ytPlayer = null;
     let musicRequested = false;
+    let musicReady = false;
+    let pendingMusicPlay = false;
+    let userApprovedMusic = false;
 
     function loadYouTubeAPI() {
         if (document.getElementById('youtube-api')) return;
@@ -213,14 +216,19 @@
         ytPlayer.setLoop(true);
     }
 
-    function startYouTubeMusic() {
+    function startYouTubeMusic(userInitiated = false) {
+        if (userInitiated) {
+            userApprovedMusic = true;
+            pendingMusicPlay = true;
+        }
         if (!musicRequested) {
             musicRequested = true;
             loadYouTubeAPI();
         }
-        if (ytPlayer && ytPlayer.playVideo) {
+        if (musicReady && ytPlayer && ytPlayer.playVideo && userApprovedMusic) {
             playThemeTrack();
             ytPlayer.playVideo();
+            pendingMusicPlay = false;
         }
     }
 
@@ -238,10 +246,12 @@
             },
             events: {
                 onReady: (event) => {
+                    musicReady = true;
                     event.target.setVolume(20);
-                    if (musicRequested) {
+                    if (pendingMusicPlay && userApprovedMusic) {
                         playThemeTrack();
                         event.target.playVideo();
+                        pendingMusicPlay = false;
                     }
                 },
                 onStateChange: (event) => {
@@ -296,9 +306,9 @@
     let pendingAction = null;
     let currentMode = 'image';
 
-    document.addEventListener('DOMContentLoaded', startYouTubeMusic);
+    document.addEventListener('DOMContentLoaded', () => startYouTubeMusic(false));
     ['click', 'touchstart', 'keydown'].forEach(evt => {
-        document.addEventListener(evt, () => startYouTubeMusic());
+        document.addEventListener(evt, () => startYouTubeMusic(true));
     });
 
     loadProfile();
