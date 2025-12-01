@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 遊戲生成機 v21.0 (選項排序修復版)</title>
+    <title>AI 遊戲生成機 v21.1 (進度條強化版)</title>
     <style>
         :root { --bg: #0f0c29; --panel: #302b63; --accent: #cb2d3e; --highlight: #ef473a; --text: #eee; --gold: #ffd700; --exp: #00e676; }
         
@@ -60,6 +60,10 @@
         .btn-nav { background: transparent; border: 1px solid #666; color: #ccc; padding: 6px 15px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; }
         .btn-nav:hover { color: white; border-color: white; }
         .status-badge { background: #333; padding: 5px 15px; border-radius: 20px; font-size: 0.9rem; color: #aaa; font-weight: bold; }
+        .progress-wrap { padding: 10px 20px 5px; background: rgba(0,0,0,0.2); }
+        .progress-bar { width: 100%; height: 8px; background: #2b2b4b; border-radius: 10px; overflow: hidden; border: 1px solid #3c3c60; }
+        #progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #ef473a, #cb2d3e); transition: width 0.3s ease; }
+        #progress-text { text-align: right; font-size: 0.8rem; color: #bbb; margin-top: 6px; letter-spacing: 0.5px; }
         
         #scene-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; overflow-y: auto; }
         #scene-emoji { font-size: 4rem; margin-bottom: 15px; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2)); }
@@ -101,11 +105,30 @@
     </div>
 
     <div id="setup-view">
-        <h1 class="title">AI 遊戲生成機 v21.0</h1>
-        <div class="subtitle">選項排序修復 • Google 聯網 • 智能搜題</div>
+        <h1 class="title">AI 遊戲生成機 v21.1</h1>
+        <div class="subtitle">進度條強化 • 選項排序修復 • Google 聯網</div>
         
         <div class="input-group">
             <input type="password" id="api-key" placeholder="在此貼上 API Key (自動儲存)">
+        </div>
+
+        <div class="input-group" style="display:flex; gap:10px; flex-wrap:wrap;">
+            <label style="flex:1;">
+                <span style="font-size:0.85rem; color:#aaa;">題目數量</span>
+                <select id="question-count" style="width:100%; padding:10px; border-radius:10px; border:1px solid #555; background:rgba(0,0,0,0.4); color:white;">
+                    <option value="5">5 題速戰</option>
+                    <option value="10" selected>10 題標準</option>
+                    <option value="15">15 題馬拉松</option>
+                </select>
+            </label>
+            <label style="flex:1;">
+                <span style="font-size:0.85rem; color:#aaa;">難度模式</span>
+                <select id="difficulty" style="width:100%; padding:10px; border-radius:10px; border:1px solid #555; background:rgba(0,0,0,0.4); color:white;">
+                    <option value="easy">休閒 (❤️x6, 獎勵 0.8x)</option>
+                    <option value="normal" selected>標準 (❤️x5, 獎勵 1.0x)</option>
+                    <option value="hard">地獄 (❤️x4, 獎勵 1.3x)</option>
+                </select>
+            </label>
         </div>
         
         <div class="tabs">
@@ -144,7 +167,15 @@
                 <button class="btn-nav" onclick="goHome()">🏠 放棄</button>
             </div>
             <div id="hp-display" style="letter-spacing: 2px;">❤️❤️❤️❤️❤️</div>
+            <div class="status-badge" id="difficulty-display">標準 | ❤️x5 | 獎勵1.0x</div>
+            <div class="status-badge" id="accuracy-display">答對 0 / 0 | 命中率 0% | 最高連擊 0</div>
             <div class="status-badge" id="level-display">Q 1/10</div>
+        </div>
+        <div class="progress-wrap">
+            <div class="progress-bar">
+                <div id="progress-fill"></div>
+            </div>
+            <div id="progress-text">第 1 / 10 題 · 已完成 0%</div>
         </div>
         <div id="scene-area">
             <div id="scene-emoji">🤖</div>
@@ -163,17 +194,44 @@
 
 <script>
     const TARGET_MODEL = "gemini-2.5-flash";
+    const STORAGE_PROFILE = 'ai_game_profile_v18';
+    const STORAGE_CONFIG = 'ai_game_config_v21';
+    const STORAGE_MODE = 'ai_game_mode_v21';
+    const DEFAULT_CONFIG = { questionCount: 10, difficulty: 'normal' };
+
     let player = { level: 1, xp: 0, coins: 0, totalGames: 0 };
+    let config = { ...DEFAULT_CONFIG };
 
     function loadProfile() {
-        const saved = localStorage.getItem('ai_game_profile_v18'); 
+        const saved = localStorage.getItem(STORAGE_PROFILE);
         if (saved) player = JSON.parse(saved);
         updateProfileUI();
     }
 
     function saveProfile() {
-        localStorage.setItem('ai_game_profile_v18', JSON.stringify(player));
+        localStorage.setItem(STORAGE_PROFILE, JSON.stringify(player));
         updateProfileUI();
+    }
+
+    function loadConfig() {
+        const saved = localStorage.getItem(STORAGE_CONFIG);
+        if (saved) config = { ...DEFAULT_CONFIG, ...JSON.parse(saved) };
+        document.getElementById('question-count').value = config.questionCount;
+        document.getElementById('difficulty').value = config.difficulty;
+    }
+
+    function saveConfig() {
+        localStorage.setItem(STORAGE_CONFIG, JSON.stringify(config));
+    }
+
+    const DIFFICULTY_SETTINGS = {
+        easy: { hp: 6, reward: 0.8, label: '休閒' },
+        normal: { hp: 5, reward: 1.0, label: '標準' },
+        hard: { hp: 4, reward: 1.3, label: '地獄' },
+    };
+
+    function getDifficulty() {
+        return DIFFICULTY_SETTINGS[config.difficulty] || DIFFICULTY_SETTINGS.normal;
     }
 
     function updateProfileUI() {
@@ -204,11 +262,28 @@
     let hp = 5;
     let pendingAction = null;
     let currentMode = 'image';
+    let maxHp = 5;
+    let totalAttempts = 0;
+    let correctCount = 0;
+    let bestStreak = 0;
+    let currentStreak = 0;
 
     loadProfile();
+    loadConfig();
+    restoreMode();
+
+    document.getElementById('question-count').addEventListener('change', (e) => {
+        config.questionCount = parseInt(e.target.value, 10);
+        saveConfig();
+    });
+    document.getElementById('difficulty').addEventListener('change', (e) => {
+        config.difficulty = e.target.value;
+        saveConfig();
+    });
 
     function switchTab(mode) {
         currentMode = mode;
+        localStorage.setItem(STORAGE_MODE, mode);
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         document.querySelectorAll('.mode-section').forEach(s => s.classList.remove('active'));
         if (mode === 'image') {
@@ -221,6 +296,11 @@
             document.querySelector('.tab-btn:nth-child(3)').classList.add('active');
             document.getElementById('mode-search').classList.add('active');
         }
+    }
+
+    function restoreMode() {
+        const savedMode = localStorage.getItem(STORAGE_MODE);
+        if (savedMode) switchTab(savedMode);
     }
 
     function goHome() {
@@ -287,6 +367,8 @@
         document.getElementById('generate-btn').disabled = true;
 
         try {
+            const difficultySetting = getDifficulty();
+            log(`模式: ${difficultySetting.label}｜題數: ${config.questionCount} 題`);
             if (isSearch) {
                 log(`🚀 正在 Google 搜尋: ${inputData}...`, "google");
                 document.getElementById('generate-btn').innerText = "🌍 聯網搜尋中...";
@@ -331,10 +413,12 @@
 
     async function callGemini(key, model, data, isImage, isSearch) {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
-        
+
         let userPart;
         let systemPrompt;
         let toolsPayload = [];
+        const questionCount = config.questionCount;
+        const difficultyLabel = getDifficulty().label;
 
         if (isImage) {
             userPart = { inline_data: { mime_type: "image/jpeg", data: data } };
@@ -354,7 +438,8 @@
 
         const fullPrompt = `
             ${systemPrompt}
-            TASK: Generate exactly 10 quiz stages.
+            TASK: Generate exactly ${questionCount} quiz stages.
+            DIFFICULTY: ${difficultyLabel}，請讓題目與解析相匹配。
             AUDIENCE: Adapt difficulty based on the topic.
             LANGUAGE: Traditional Chinese (繁體中文).
             TYPES: Mix 'choice' and 'fill'.
@@ -401,7 +486,17 @@
     function startGame() {
         document.getElementById('setup-view').style.display = 'none';
         document.getElementById('game-view').style.display = 'flex';
-        currentStage = 0; hp = 5; 
+        currentStage = 0;
+        totalAttempts = 0;
+        correctCount = 0;
+        bestStreak = 0;
+        currentStreak = 0;
+        const diff = getDifficulty();
+        maxHp = diff.hp;
+        hp = diff.hp;
+        document.getElementById('difficulty-display').innerText = `${diff.label} | ❤️x${diff.hp} | 獎勵${diff.reward}x`;
+        updateProgress(0, gameData.stages.length);
+        updateStatsUI();
         renderStage();
     }
 
@@ -411,10 +506,11 @@
             return;
         }
         const stage = gameData.stages[currentStage];
-        document.getElementById('level-display').innerText = `Q ${currentStage+1}/10`;
+        document.getElementById('level-display').innerText = `Q ${currentStage+1}/${gameData.stages.length}`;
         updateHP();
         document.getElementById('scene-emoji').innerText = stage.emoji;
         document.getElementById('scene-text').innerText = stage.text;
+        updateProgress(currentStage, gameData.stages.length);
         
         const area = document.getElementById('action-area');
         area.innerHTML = '';
@@ -453,11 +549,18 @@
 
     function checkFillAns(stage, userVal) {
         if (!userVal.trim()) return;
+        totalAttempts++;
         const cleanUser = userVal.trim().toLowerCase();
         const cleanAns = stage.answer.toString().toLowerCase();
         if (cleanUser === cleanAns) {
+            correctCount++;
+            currentStreak++;
+            bestStreak = Math.max(bestStreak, currentStreak);
+            updateStatsUI();
             showOverlay("⭕", stage.feedback_correct, false, true);
         } else {
+            currentStreak = 0;
+            updateStatsUI();
             hp--; updateHP();
             if(hp<=0) handleGameOver(stage.feedback_wrong);
             else showOverlay("❌", stage.feedback_wrong, false, false);
@@ -465,9 +568,16 @@
     }
 
     function checkChoiceAns(opt) {
+        totalAttempts++;
         if (opt.correct) {
+            correctCount++;
+            currentStreak++;
+            bestStreak = Math.max(bestStreak, currentStreak);
+            updateStatsUI();
             showOverlay("⭕", opt.feedback, false, true);
         } else {
+            currentStreak = 0;
+            updateStatsUI();
             hp--; updateHP();
             if(hp<=0) handleGameOver(opt.feedback);
             else showOverlay("❌", opt.feedback, false, false);
@@ -475,17 +585,20 @@
     }
 
     function updateHP() {
-        let h = ""; 
-        for(let i=0;i<hp;i++) h+="❤️"; 
-        for(let i=hp;i<5;i++) h+="🖤"; 
+        let h = "";
+        for(let i=0;i<hp;i++) h+="❤️";
+        for(let i=hp;i<maxHp;i++) h+="🖤";
         document.getElementById('hp-display').innerText = h;
     }
 
     function handleGameClear() {
+        const { reward, label } = getDifficulty();
         const baseXP = 100;
-        const bonusCoins = hp * 10;
-        const bonusXP = hp * 20;
-        const totalXP = baseXP + bonusXP;
+        const bonusCoins = Math.round(hp * 10 * reward);
+        const bonusXP = Math.round(hp * 20 * reward);
+        const totalXP = Math.round((baseXP + bonusXP) * reward);
+
+        updateProgress(gameData.stages.length, gameData.stages.length);
 
         player.coins += bonusCoins;
         player.xp += totalXP;
@@ -495,11 +608,13 @@
         const rewardHTML = `
             <div class="reward-box">
                 <div class="reward-item">通關經驗: +${baseXP} XP</div>
+                <div class="reward-item">難度係數 (${label}): x${reward}</div>
                 <div class="reward-item">生命加成: +${bonusXP} XP</div>
                 <div class="reward-item">賺取金幣: <span class="reward-highlight">💰 +${bonusCoins}</span></div>
                 <hr style="border:0; border-top:1px solid #555; margin:10px 0;">
                 <div class="reward-item" style="color:#00e676;">總計獲得: ${totalXP} XP</div>
             </div>
+            ${buildSummaryHTML()}
         `;
         
         document.getElementById('reward-panel').innerHTML = rewardHTML;
@@ -507,7 +622,7 @@
     }
 
     function handleGameOver(reason) {
-        const pityXP = 10;
+        const pityXP = Math.round(10 * getDifficulty().reward);
         player.xp += pityXP;
         saveProfile();
 
@@ -516,6 +631,7 @@
                 <div class="reward-item">安慰獎勵: +${pityXP} XP</div>
                 <div class="reward-item" style="font-size:0.9rem; color:#aaa;">別灰心，下次一定行！</div>
             </div>
+            ${buildSummaryHTML(true)}
         `;
         document.getElementById('reward-panel').innerHTML = rewardHTML;
         showOverlay("💀", "挑戰失敗...\n" + reason, false, false, true);
@@ -543,6 +659,36 @@
         }
     }
     function closeOverlay() { if(pendingAction) pendingAction(); }
+
+    function updateProgress(currentIndex, total) {
+        if (total <= 0) return;
+        const clamped = Math.min(currentIndex, total);
+        const percent = Math.round((clamped / total) * 100);
+        const fill = document.getElementById('progress-fill');
+        const text = document.getElementById('progress-text');
+        fill.style.width = `${Math.min(percent, 100)}%`;
+        text.innerText = `第 ${Math.min(currentIndex + 1, total)} / ${total} 題 · 已完成 ${percent}%`;
+    }
+
+    function buildSummaryHTML(isFail = false) {
+        const accuracy = totalAttempts === 0 ? 0 : Math.round((correctCount / totalAttempts) * 100);
+        const summaryTitle = isFail ? '戰報' : '戰鬥摘要';
+        return `
+            <div class="reward-box" style="margin-top:10px;">
+                <div class="reward-item" style="font-weight:bold;">${summaryTitle}</div>
+                <div class="reward-item">答題次數：${totalAttempts} 次</div>
+                <div class="reward-item">答對題數：${correctCount} 題</div>
+                <div class="reward-item">命中率：${accuracy}%</div>
+                <div class="reward-item">最長連擊：${bestStreak} 連勝</div>
+            </div>
+        `;
+    }
+
+    function updateStatsUI() {
+        const accuracy = totalAttempts === 0 ? 0 : Math.round((correctCount / totalAttempts) * 100);
+        const badge = document.getElementById('accuracy-display');
+        badge.innerText = `答對 ${correctCount} / ${totalAttempts} | 命中率 ${accuracy}% | 最高連擊 ${bestStreak}`;
+    }
 </script>
 
 </body>
