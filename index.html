@@ -1,549 +1,850 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 遊戲生成機 v21.0 (選項排序修復版)</title>
-    <style>
-        :root { --bg: #0f0c29; --panel: #302b63; --accent: #cb2d3e; --highlight: #ef473a; --text: #eee; --gold: #ffd700; --exp: #00e676; }
-        
-        body { font-family: '微軟正黑體', sans-serif; background: linear-gradient(135deg, #24243e 0%, #302b63 100%); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 10px; overflow-y: auto; }
-        
-        #console { width: 100%; max-width: 650px; background: rgba(0,0,0,0.6); border-radius: 20px; backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 0 50px rgba(0,0,0,0.8); display: flex; flex-direction: column; position: relative; z-index: 5; margin: 20px 0; max-height: 95vh; overflow-y: auto; }
-        #console::-webkit-scrollbar { width: 8px; }
-        #console::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
-
-        /* 玩家檔案卡 */
-        #profile-card { background: rgba(0,0,0,0.5); padding: 12px 20px; margin: 0; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
-        .rank-badge { font-size: 2rem; margin-right: 15px; filter: drop-shadow(0 0 5px rgba(255,215,0,0.5)); }
-        .profile-info { flex: 1; text-align: left; }
-        .profile-name { font-size: 1rem; font-weight: bold; color: var(--highlight); }
-        .coin-display { font-size: 0.9rem; color: var(--gold); font-weight: bold; }
-        .exp-container { width: 100%; background: #444; height: 6px; border-radius: 4px; margin-top: 4px; overflow: hidden; }
-        .exp-fill { height: 100%; background: var(--exp); width: 0%; transition: width 0.5s ease-out; }
-        .level-text { font-size: 0.75rem; color: #aaa; margin-left: 8px; }
-
-        /* 設定區 */
-        #setup-view { padding: 30px; text-align: center; width: 100%; box-sizing: border-box; }
-        h1.title { margin: 0 0 5px 0; font-size: 1.6rem; background: -webkit-linear-gradient(#fff, #aaa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .subtitle { color: #888; font-size: 0.8rem; margin-bottom: 20px; }
-        
-        .input-group { margin-bottom: 15px; text-align: left; }
-        input[type="password"], input[type="text"] { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #555; background: rgba(0,0,0,0.4); color: white; box-sizing: border-box; font-size: 1rem; text-align: center; letter-spacing: 1px;}
-        
-        .tabs { display: flex; justify-content: center; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid #444; padding-bottom: 10px; }
-        .tab-btn { background: transparent; border: 1px solid #444; padding: 8px 15px; border-radius: 50px; color: #aaa; cursor: pointer; transition: 0.3s; font-size: 0.9rem; }
-        .tab-btn.active { background: var(--highlight); color: white; border-color: var(--highlight); }
-
-        .mode-section { display: none; animation: fadeIn 0.4s; }
-        .mode-section.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-
-        .file-upload { border: 2px dashed #444; padding: 30px; border-radius: 15px; cursor: pointer; position: relative; margin: 10px 0; background: rgba(255,255,255,0.02); transition: 0.3s; }
-        .file-upload:hover { border-color: var(--highlight); background: rgba(233,69,96,0.05); }
-        .file-upload input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
-        
-        textarea { width: 100%; height: 100px; padding: 15px; border-radius: 10px; border: 1px solid #444; background: rgba(0,0,0,0.4); color: white; box-sizing: border-box; resize: vertical; font-size: 1rem; }
-
-        .google-badge { display: inline-block; background: #4285F4; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; margin-bottom: 5px; }
-
-        .btn-main { background: var(--highlight); color: white; border: none; padding: 15px 50px; font-size: 1.2rem; border-radius: 50px; cursor: pointer; width: 100%; font-weight: bold; transition: 0.3s; margin-top: 15px; box-shadow: 0 5px 20px rgba(233,69,96,0.3); }
-        .btn-main:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(233,69,96,0.5); }
-        .btn-main:disabled { background: #555; cursor: not-allowed; }
-
-        #status-log { margin-top: 15px; font-size: 0.85rem; color: #bbb; text-align: left; background: rgba(0,0,0,0.8); padding: 12px; border-radius: 10px; display: none; min-height: 40px; max-height: 100px; overflow-y: auto; font-family: monospace; border: 1px solid #666; }
-        .log-error { color: #ff6b6b; } .log-success { color: #69f0ae; } .log-google { color: #4285F4; font-weight: bold; }
-
-        /* 遊戲區 */
-        #game-view { display: none; flex-direction: column; min-height: 600px; width: 100%; position: relative; }
-        .game-header { padding: 15px 20px; background: rgba(0,0,0,0.3); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); flex-shrink: 0; }
-        .btn-nav { background: transparent; border: 1px solid #666; color: #ccc; padding: 6px 15px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; }
-        .btn-nav:hover { color: white; border-color: white; }
-        .status-badge { background: #333; padding: 5px 15px; border-radius: 20px; font-size: 0.9rem; color: #aaa; font-weight: bold; }
-        
-        #scene-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; overflow-y: auto; }
-        #scene-emoji { font-size: 4rem; margin-bottom: 15px; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2)); }
-        #scene-text { font-size: 1.3rem; line-height: 1.5; background: rgba(255,255,255,0.08); padding: 20px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); width: 90%; max-width: 500px; }
-        
-        #action-area { padding: 20px 20px 40px 20px; background: rgba(0,0,0,0.2); min-height: 150px; display: flex; flex-direction: column; justify-content: center; align-items: center; flex-shrink: 0; }
-        
-        .choices-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; max-width: 600px; }
-        .btn-choice { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 18px; border-radius: 12px; cursor: pointer; font-size: 1.1rem; transition: 0.2s; font-weight: bold; min-height: 60px; display: flex; align-items: center; justify-content: center; }
-        .btn-choice:hover { background: rgba(255,255,255,0.15); border-color: var(--highlight); transform: translateY(-2px); }
-        .input-area { width: 100%; max-width: 400px; display: flex; gap: 10px; margin-bottom: 10px; }
-        #answer-input { flex: 1; padding: 15px; font-size: 1.2rem; border-radius: 10px; border: 2px solid #555; background: rgba(0,0,0,0.5); color: white; text-align: center; }
-        .btn-submit { background: var(--highlight); color: white; border: none; padding: 0 30px; border-radius: 10px; font-weight: bold; cursor: pointer; }
-
-        #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: none; flex-direction: column; justify-content: center; align-items: center; text-align: center; z-index: 20; padding: 20px; box-sizing: border-box; }
-        #overlay h2 { font-size: 3rem; margin: 0 0 10px 0; }
-        #overlay p { font-size: 1.2rem; margin: 0 0 20px 0; max-width: 80%; line-height: 1.5; color: #ddd; }
-        
-        .reward-box { background: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; border: 1px solid gold; margin-bottom: 20px; width: 80%; max-width: 400px; }
-        .reward-item { font-size: 1.1rem; margin: 5px 0; color: #fff; }
-        .reward-highlight { color: var(--gold); font-weight: bold; font-size: 1.3rem; }
-    </style>
-</head>
-<body>
-
-<div id="console">
-    <div id="profile-card">
-        <div class="rank-badge" id="rank-icon">🥉</div>
-        <div class="profile-info">
-            <div class="profile-name" id="rank-name">銅牌冒險家</div>
-            <div style="display:flex; justify-content:space-between; align-items:flex-end;">
-                <div class="coin-display">💰 <span id="coin-count">0</span></div>
-                <div class="level-text">Lv.<span id="level-num">1</span></div>
-            </div>
-            <div class="exp-container">
-                <div class="exp-fill" id="exp-bar"></div>
-            </div>
-        </div>
-    </div>
-
-    <div id="setup-view">
-        <h1 class="title">AI 遊戲生成機 v21.0</h1>
-        <div class="subtitle">選項排序修復 • Google 聯網 • 智能搜題</div>
-        
-        <div class="input-group">
-            <input type="password" id="api-key" placeholder="在此貼上 API Key (自動儲存)">
-        </div>
-        
-        <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('image')">📸 圖片</button>
-            <button class="tab-btn" onclick="switchTab('text')">📝 文字</button>
-            <button class="tab-btn" onclick="switchTab('search')">🔍 智能搜題</button>
-        </div>
-
-        <div id="mode-image" class="mode-section active">
-            <div class="file-upload">
-                <input type="file" id="image-input" accept="image/*" onchange="previewImage(this)">
-                <div id="file-label">點擊上傳圖片 📷</div>
-            </div>
-            <img id="preview" style="max-width: 150px; display: none; margin: 0 auto 15px auto; border-radius: 10px; border: 2px solid #555;">
-        </div>
-
-        <div id="mode-text" class="mode-section">
-            <textarea id="text-input" placeholder="請貼上文章、故事或考題內容..."></textarea>
-        </div>
-
-        <div id="mode-search" class="mode-section">
-            <span class="google-badge">Google Search Enabled</span>
-            <input type="text" id="search-input" placeholder="輸入主題 (如: 2024奧運、Python教學...)" style="margin-top:10px; text-align:center;">
-            <div style="font-size: 0.8rem; color: #888; margin-top: 10px;">
-                💡 系統將會使用 <b>Google 搜尋</b> 查找最新資訊來出題。
-            </div>
-        </div>
-
-        <button class="btn-main" id="generate-btn" onclick="startProcess()">🚀 開始挑戰</button>
-        <div id="status-log">準備就緒...</div>
-    </div>
-
-    <div id="game-view">
-        <div class="game-header">
-            <div class="header-left">
-                <button class="btn-nav" onclick="goHome()">🏠 放棄</button>
-            </div>
-            <div id="hp-display" style="letter-spacing: 2px;">❤️❤️❤️❤️❤️</div>
-            <div class="status-badge" id="level-display">Q 1/10</div>
-        </div>
-        <div id="scene-area">
-            <div id="scene-emoji">🤖</div>
-            <div id="scene-text">載入中...</div>
-        </div>
-        <div id="action-area"></div>
-    </div>
-
-    <div id="overlay">
-        <h2 id="ov-icon">🎉</h2>
-        <div id="reward-panel"></div>
-        <p id="ov-text">訊息</p>
-        <button class="btn-main" style="width: auto;" onclick="closeOverlay()">繼續</button>
-    </div>
-</div>
-
-<script>
-    const TARGET_MODEL = "gemini-2.5-flash";
-    let player = { level: 1, xp: 0, coins: 0, totalGames: 0 };
-
-    function loadProfile() {
-        const saved = localStorage.getItem('ai_game_profile_v18'); 
-        if (saved) player = JSON.parse(saved);
-        updateProfileUI();
-    }
-
-    function saveProfile() {
-        localStorage.setItem('ai_game_profile_v18', JSON.stringify(player));
-        updateProfileUI();
-    }
-
-    function updateProfileUI() {
-        const XP_PER_LEVEL = 500;
-        while (player.xp >= XP_PER_LEVEL) {
-            player.xp -= XP_PER_LEVEL;
-            player.level++;
-        }
-        let rankName = "銅牌冒險家", rankIcon = "🥉", rankColor = "#cd7f32";
-        if (player.level >= 20) { rankName = "鑽石傳說"; rankIcon = "💎"; rankColor = "#b9f2ff"; }
-        else if (player.level >= 15) { rankName = "白金宗師"; rankIcon = "💠"; rankColor = "#e5e4e2"; }
-        else if (player.level >= 10) { rankName = "黃金大師"; rankIcon = "🥇"; rankColor = "#ffd700"; }
-        else if (player.level >= 5) { rankName = "銀牌勇者"; rankIcon = "🥈"; rankColor = "#c0c0c0"; }
-
-        document.getElementById('rank-icon').innerText = rankIcon;
-        document.getElementById('rank-name').innerText = rankName;
-        document.getElementById('rank-name').style.color = rankColor;
-        document.getElementById('coin-count').innerText = player.coins;
-        document.getElementById('level-num').innerText = player.level;
-        document.getElementById('exp-bar').style.width = `${(player.xp / XP_PER_LEVEL) * 100}%`;
-    }
-
-    const keyInput = document.getElementById('api-key');
-    if(localStorage.getItem('gemini_key')) keyInput.value = localStorage.getItem('gemini_key');
-
-    let gameData = null;
-    let currentStage = 0;
-    let hp = 5;
-    let pendingAction = null;
-    let currentMode = 'image';
-
-    loadProfile();
-
-    function switchTab(mode) {
-        currentMode = mode;
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.mode-section').forEach(s => s.classList.remove('active'));
-        if (mode === 'image') {
-            document.querySelector('.tab-btn:nth-child(1)').classList.add('active');
-            document.getElementById('mode-image').classList.add('active');
-        } else if (mode === 'text') {
-            document.querySelector('.tab-btn:nth-child(2)').classList.add('active');
-            document.getElementById('mode-text').classList.add('active');
-        } else {
-            document.querySelector('.tab-btn:nth-child(3)').classList.add('active');
-            document.getElementById('mode-search').classList.add('active');
-        }
-    }
-
-    function goHome() {
-        if (confirm("返回首頁將失去當前進度，確定嗎？")) {
-            location.reload();
-        }
-    }
-
-    function log(msg, type='info') {
-        const logBox = document.getElementById('status-log');
-        logBox.style.display = 'block';
-        const line = document.createElement('div');
-        line.className = `log-line log-${type}`;
-        line.innerHTML = `> ${msg}`;
-        logBox.appendChild(line);
-        logBox.scrollTop = logBox.scrollHeight;
-    }
-
-    function previewImage(input) {
-        if (input.files && input.files[0]) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                document.getElementById('preview').src = e.target.result;
-                document.getElementById('preview').style.display = 'block';
-                document.getElementById('file-label').innerText = "圖片已就緒";
-            }
-            reader.readAsDataURL(input.files[0]);
-        }
-    }
-
-    async function startProcess() {
-        const apiKey = keyInput.value.trim();
-        const logBox = document.getElementById('status-log');
-        logBox.innerHTML = '';
-        logBox.style.display = 'block';
-        
-        if (!apiKey) return log("請輸入 API Key", "error");
-
-        let inputData = null;
-        let isImage = false;
-        let isSearch = false;
-
-        if (currentMode === 'image') {
-            const file = document.getElementById('image-input').files[0];
-            if (!file) return log("請上傳圖片", "error");
-            log("正在處理圖片...");
-            const compressedBase64 = await compressImage(file);
-            inputData = compressedBase64.split(',')[1];
-            isImage = true;
-        } else if (currentMode === 'text') {
-            const textVal = document.getElementById('text-input').value.trim();
-            if (!textVal) return log("請輸入文字", "error");
-            inputData = textVal;
-            isImage = false;
-        } else {
-            const searchVal = document.getElementById('search-input').value.trim();
-            if (!searchVal) return log("請輸入關鍵字", "error");
-            inputData = searchVal;
-            isImage = false;
-            isSearch = true;
-        }
-
-        localStorage.setItem('gemini_key', apiKey);
-        document.getElementById('generate-btn').disabled = true;
-
-        try {
-            if (isSearch) {
-                log(`🚀 正在 Google 搜尋: ${inputData}...`, "google");
-                document.getElementById('generate-btn').innerText = "🌍 聯網搜尋中...";
-            } else {
-                log(`正在連線 AI...`);
-            }
-            
-            const result = await callGemini(apiKey, TARGET_MODEL, inputData, isImage, isSearch);
-            log(`✅ 生成完畢！準備開始...`, "success");
-            
-            gameData = result;
-            setTimeout(startGame, 1000);
-
-        } catch (e) {
-            console.error(e);
-            log("錯誤: " + e.message, "error");
-            document.getElementById('generate-btn').innerText = "🚀 開始挑戰";
-            document.getElementById('generate-btn').disabled = false;
-        }
-    }
-
-    function compressImage(file) {
-        return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = (e) => {
-                const img = new Image();
-                img.src = e.target.result;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-                    const MAX = 800;
-                    let w = img.width, h = img.height;
-                    if (w > MAX) { h *= MAX/w; w = MAX; }
-                    canvas.width = w; canvas.height = h;
-                    ctx.drawImage(img, 0, 0, w, h);
-                    resolve(canvas.toDataURL('image/jpeg', 0.7));
-                };
-            };
-        });
-    }
-
-    async function callGemini(key, model, data, isImage, isSearch) {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
-        
-        let userPart;
-        let systemPrompt;
-        let toolsPayload = [];
-
-        if (isImage) {
-            userPart = { inline_data: { mime_type: "image/jpeg", data: data } };
-            systemPrompt = "Analyze the image content.";
-        } else if (isSearch) {
-            userPart = { text: `Research Topic: ${data}` };
-            toolsPayload = [{ google_search: {} }];
-            systemPrompt = `
-                You are an Expert Teacher with access to Google Search.
-                User wants a quiz on: "${data}".
-                ACTION: Use Google Search to find accurate facts.
-            `;
-        } else {
-            userPart = { text: `Material: ${data}` };
-            systemPrompt = "Analyze the text material.";
-        }
-
-        const fullPrompt = `
-            ${systemPrompt}
-            TASK: Generate exactly 10 quiz stages.
-            AUDIENCE: Adapt difficulty based on the topic.
-            LANGUAGE: Traditional Chinese (繁體中文).
-            TYPES: Mix 'choice' and 'fill'.
-            FEEDBACK: Detailed explanations are required.
-            
-            JSON Format:
-            {
-                "stages": [
-                    {
-                        "type": "choice", "emoji": "🔢", "text": "Question",
-                        "options": [{ "text": "A. Answer1", "correct": false, "feedback": "..." }, { "text": "B. Answer2", "correct": true, "feedback": "..." }],
-                        "answer": "answer_if_fill", "feedback_correct": "...", "feedback_wrong": "..."
-                    }
-                ]
-            }
-            Return ONLY JSON.
-        `;
-
-        const requestBody = {
-            contents: [{ parts: [{ text: fullPrompt }, userPart] }]
-        };
-
-        if (isSearch) {
-            requestBody.tools = toolsPayload;
-        }
-
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody)
-        });
-
-        if (!response.ok) throw new Error(`API Error ${response.status}`);
-        const resData = await response.json();
-        
-        const candidates = resData.candidates;
-        if (!candidates || candidates.length === 0) throw new Error("No response from AI");
-        
-        const rawText = candidates[0].content.parts.map(p => p.text).join(''); 
-        const jsonString = rawText.substring(rawText.indexOf('{'), rawText.lastIndexOf('}') + 1);
-        try { return JSON.parse(jsonString); } catch(e) { throw new Error("JSON Parse Error"); }
-    }
-
-    function startGame() {
-        document.getElementById('setup-view').style.display = 'none';
-        document.getElementById('game-view').style.display = 'flex';
-        currentStage = 0; hp = 5; 
-        renderStage();
-    }
-
-    function renderStage() {
-        if (currentStage >= gameData.stages.length) {
-            handleGameClear();
-            return;
-        }
-        const stage = gameData.stages[currentStage];
-        document.getElementById('level-display').innerText = `Q ${currentStage+1}/10`;
-        updateHP();
-        document.getElementById('scene-emoji').innerText = stage.emoji;
-        document.getElementById('scene-text').innerText = stage.text;
-        
-        const area = document.getElementById('action-area');
-        area.innerHTML = '';
-
-        if (stage.type === 'fill') {
-            const wrapper = document.createElement('div');
-            wrapper.className = 'input-area';
-            const input = document.createElement('input');
-            input.id = 'answer-input';
-            input.placeholder = "輸入答案...";
-            input.autocomplete = "off";
-            const btn = document.createElement('button');
-            btn.className = 'btn-submit';
-            btn.innerText = "送出";
-            btn.onclick = () => checkFillAns(stage, input.value);
-            input.addEventListener("keypress", function(event) { if (event.key === "Enter") btn.click(); });
-            wrapper.appendChild(input);
-            wrapper.appendChild(btn);
-            area.appendChild(wrapper);
-            setTimeout(() => input.focus(), 100);
-        } else {
-            const grid = document.createElement('div');
-            grid.className = 'choices-grid';
-            // 修正：不再隨機洗牌選項，保留 AI 生成的順序 (A, B, C, D)
-            let opts = stage.options; 
-            opts.forEach(opt => {
-                const btn = document.createElement('button');
-                btn.className = 'btn-choice';
-                btn.innerText = opt.text;
-                btn.onclick = () => checkChoiceAns(opt);
-                grid.appendChild(btn);
-            });
-            area.appendChild(grid);
-        }
-    }
-
-    function checkFillAns(stage, userVal) {
-        if (!userVal.trim()) return;
-        const cleanUser = userVal.trim().toLowerCase();
-        const cleanAns = stage.answer.toString().toLowerCase();
-        if (cleanUser === cleanAns) {
-            showOverlay("⭕", stage.feedback_correct, false, true);
-        } else {
-            hp--; updateHP();
-            if(hp<=0) handleGameOver(stage.feedback_wrong);
-            else showOverlay("❌", stage.feedback_wrong, false, false);
-        }
-    }
-
-    function checkChoiceAns(opt) {
-        if (opt.correct) {
-            showOverlay("⭕", opt.feedback, false, true);
-        } else {
-            hp--; updateHP();
-            if(hp<=0) handleGameOver(opt.feedback);
-            else showOverlay("❌", opt.feedback, false, false);
-        }
-    }
-
-    function updateHP() {
-        let h = ""; 
-        for(let i=0;i<hp;i++) h+="❤️"; 
-        for(let i=hp;i<5;i++) h+="🖤"; 
-        document.getElementById('hp-display').innerText = h;
-    }
-
-    function handleGameClear() {
-        const baseXP = 100;
-        const bonusCoins = hp * 10;
-        const bonusXP = hp * 20;
-        const totalXP = baseXP + bonusXP;
-
-        player.coins += bonusCoins;
-        player.xp += totalXP;
-        player.totalGames++;
-        saveProfile();
-
-        const rewardHTML = `
-            <div class="reward-box">
-                <div class="reward-item">通關經驗: +${baseXP} XP</div>
-                <div class="reward-item">生命加成: +${bonusXP} XP</div>
-                <div class="reward-item">賺取金幣: <span class="reward-highlight">💰 +${bonusCoins}</span></div>
-                <hr style="border:0; border-top:1px solid #555; margin:10px 0;">
-                <div class="reward-item" style="color:#00e676;">總計獲得: ${totalXP} XP</div>
-            </div>
-        `;
-        
-        document.getElementById('reward-panel').innerHTML = rewardHTML;
-        showOverlay("🏆", "恭喜通關！結算獎勵如下：", true, false);
-    }
-
-    function handleGameOver(reason) {
-        const pityXP = 10;
-        player.xp += pityXP;
-        saveProfile();
-
-        const rewardHTML = `
-            <div class="reward-box" style="border-color: #ff5252;">
-                <div class="reward-item">安慰獎勵: +${pityXP} XP</div>
-                <div class="reward-item" style="font-size:0.9rem; color:#aaa;">別灰心，下次一定行！</div>
-            </div>
-        `;
-        document.getElementById('reward-panel').innerHTML = rewardHTML;
-        showOverlay("💀", "挑戰失敗...\n" + reason, false, false, true);
-    }
-
-    function showOverlay(icon, txt, isWin, isNext, isDead=false) {
-        const ov = document.getElementById('overlay'); ov.style.display = 'flex';
-        document.getElementById('ov-icon').innerText = icon;
-        document.getElementById('ov-text').innerText = txt;
-        const btn = document.querySelector('#overlay button');
-        
-        if (!isWin && !isDead) {
-            document.getElementById('reward-panel').innerHTML = "";
-        }
-
-        if(isWin || isDead) {
-            pendingAction = () => { location.reload(); };
-            btn.innerText = "🏠 返回首頁 (已存檔)";
-        } else if(isNext) {
-            pendingAction = () => { ov.style.display='none'; currentStage++; renderStage(); };
-            btn.innerText = "下一關";
-        } else {
-            pendingAction = () => { ov.style.display='none'; };
-            btn.innerText = "再試一次";
-        }
-    }
-    function closeOverlay() { if(pendingAction) pendingAction(); }
-</script>
-
-</body>
-</html>
+ (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
+diff --git a/index.html b/index.html
+index 1d3d17f643131de543ab923f023ffaf7df456502..fe26206c72cceaa0b8f163e4713e86abbd124c62 100644
+--- a/index.html
++++ b/index.html
+@@ -1,31 +1,31 @@
+ <!DOCTYPE html>
+ <html lang="zh-TW">
+ <head>
+     <meta charset="UTF-8">
+     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-    <title>AI 遊戲生成機 v21.0 (選項排序修復版)</title>
++    <title>AI 遊戲生成機 v21.1 (進度條強化版)</title>
+     <style>
+         :root { --bg: #0f0c29; --panel: #302b63; --accent: #cb2d3e; --highlight: #ef473a; --text: #eee; --gold: #ffd700; --exp: #00e676; }
+         
+         body { font-family: '微軟正黑體', sans-serif; background: linear-gradient(135deg, #24243e 0%, #302b63 100%); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 10px; overflow-y: auto; }
+         
+         #console { width: 100%; max-width: 650px; background: rgba(0,0,0,0.6); border-radius: 20px; backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 0 50px rgba(0,0,0,0.8); display: flex; flex-direction: column; position: relative; z-index: 5; margin: 20px 0; max-height: 95vh; overflow-y: auto; }
+         #console::-webkit-scrollbar { width: 8px; }
+         #console::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+ 
+         /* 玩家檔案卡 */
+         #profile-card { background: rgba(0,0,0,0.5); padding: 12px 20px; margin: 0; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+         .rank-badge { font-size: 2rem; margin-right: 15px; filter: drop-shadow(0 0 5px rgba(255,215,0,0.5)); }
+         .profile-info { flex: 1; text-align: left; }
+         .profile-name { font-size: 1rem; font-weight: bold; color: var(--highlight); }
+         .coin-display { font-size: 0.9rem; color: var(--gold); font-weight: bold; }
+         .exp-container { width: 100%; background: #444; height: 6px; border-radius: 4px; margin-top: 4px; overflow: hidden; }
+         .exp-fill { height: 100%; background: var(--exp); width: 0%; transition: width 0.5s ease-out; }
+         .level-text { font-size: 0.75rem; color: #aaa; margin-left: 8px; }
+ 
+         /* 設定區 */
+         #setup-view { padding: 30px; text-align: center; width: 100%; box-sizing: border-box; }
+         h1.title { margin: 0 0 5px 0; font-size: 1.6rem; background: -webkit-linear-gradient(#fff, #aaa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+         .subtitle { color: #888; font-size: 0.8rem; margin-bottom: 20px; }
+         
+         .input-group { margin-bottom: 15px; text-align: left; }
+@@ -37,218 +37,298 @@
+ 
+         .mode-section { display: none; animation: fadeIn 0.4s; }
+         .mode-section.active { display: block; }
+         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+ 
+         .file-upload { border: 2px dashed #444; padding: 30px; border-radius: 15px; cursor: pointer; position: relative; margin: 10px 0; background: rgba(255,255,255,0.02); transition: 0.3s; }
+         .file-upload:hover { border-color: var(--highlight); background: rgba(233,69,96,0.05); }
+         .file-upload input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+         
+         textarea { width: 100%; height: 100px; padding: 15px; border-radius: 10px; border: 1px solid #444; background: rgba(0,0,0,0.4); color: white; box-sizing: border-box; resize: vertical; font-size: 1rem; }
+ 
+         .google-badge { display: inline-block; background: #4285F4; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; margin-bottom: 5px; }
+ 
+         .btn-main { background: var(--highlight); color: white; border: none; padding: 15px 50px; font-size: 1.2rem; border-radius: 50px; cursor: pointer; width: 100%; font-weight: bold; transition: 0.3s; margin-top: 15px; box-shadow: 0 5px 20px rgba(233,69,96,0.3); }
+         .btn-main:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(233,69,96,0.5); }
+         .btn-main:disabled { background: #555; cursor: not-allowed; }
+ 
+         #status-log { margin-top: 15px; font-size: 0.85rem; color: #bbb; text-align: left; background: rgba(0,0,0,0.8); padding: 12px; border-radius: 10px; display: none; min-height: 40px; max-height: 100px; overflow-y: auto; font-family: monospace; border: 1px solid #666; }
+         .log-error { color: #ff6b6b; } .log-success { color: #69f0ae; } .log-google { color: #4285F4; font-weight: bold; }
+ 
+         /* 遊戲區 */
+         #game-view { display: none; flex-direction: column; min-height: 600px; width: 100%; position: relative; }
+         .game-header { padding: 15px 20px; background: rgba(0,0,0,0.3); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); flex-shrink: 0; }
+         .btn-nav { background: transparent; border: 1px solid #666; color: #ccc; padding: 6px 15px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; }
+         .btn-nav:hover { color: white; border-color: white; }
+-        .status-badge { background: #333; padding: 5px 15px; border-radius: 20px; font-size: 0.9rem; color: #aaa; font-weight: bold; }
++        .status-badge { background: #333; padding: 5px 15px; border-radius: 20px; font-size: 0.9rem; color: #aaa; font-weight: bold; }
++        .progress-wrap { padding: 10px 20px 5px; background: rgba(0,0,0,0.2); }
++        .progress-bar { width: 100%; height: 8px; background: #2b2b4b; border-radius: 10px; overflow: hidden; border: 1px solid #3c3c60; }
++        #progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #ef473a, #cb2d3e); transition: width 0.3s ease; }
++        #progress-text { text-align: right; font-size: 0.8rem; color: #bbb; margin-top: 6px; letter-spacing: 0.5px; }
+         
+         #scene-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; overflow-y: auto; }
+         #scene-emoji { font-size: 4rem; margin-bottom: 15px; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2)); }
+         #scene-text { font-size: 1.3rem; line-height: 1.5; background: rgba(255,255,255,0.08); padding: 20px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); width: 90%; max-width: 500px; }
+         
+         #action-area { padding: 20px 20px 40px 20px; background: rgba(0,0,0,0.2); min-height: 150px; display: flex; flex-direction: column; justify-content: center; align-items: center; flex-shrink: 0; }
+         
+         .choices-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; max-width: 600px; }
+         .btn-choice { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 18px; border-radius: 12px; cursor: pointer; font-size: 1.1rem; transition: 0.2s; font-weight: bold; min-height: 60px; display: flex; align-items: center; justify-content: center; }
+         .btn-choice:hover { background: rgba(255,255,255,0.15); border-color: var(--highlight); transform: translateY(-2px); }
+         .input-area { width: 100%; max-width: 400px; display: flex; gap: 10px; margin-bottom: 10px; }
+         #answer-input { flex: 1; padding: 15px; font-size: 1.2rem; border-radius: 10px; border: 2px solid #555; background: rgba(0,0,0,0.5); color: white; text-align: center; }
+         .btn-submit { background: var(--highlight); color: white; border: none; padding: 0 30px; border-radius: 10px; font-weight: bold; cursor: pointer; }
+ 
+         #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: none; flex-direction: column; justify-content: center; align-items: center; text-align: center; z-index: 20; padding: 20px; box-sizing: border-box; }
+         #overlay h2 { font-size: 3rem; margin: 0 0 10px 0; }
+         #overlay p { font-size: 1.2rem; margin: 0 0 20px 0; max-width: 80%; line-height: 1.5; color: #ddd; }
+         
+         .reward-box { background: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; border: 1px solid gold; margin-bottom: 20px; width: 80%; max-width: 400px; }
+         .reward-item { font-size: 1.1rem; margin: 5px 0; color: #fff; }
+         .reward-highlight { color: var(--gold); font-weight: bold; font-size: 1.3rem; }
+     </style>
+ </head>
+ <body>
+ 
+ <div id="console">
+     <div id="profile-card">
+         <div class="rank-badge" id="rank-icon">🥉</div>
+         <div class="profile-info">
+             <div class="profile-name" id="rank-name">銅牌冒險家</div>
+             <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                 <div class="coin-display">💰 <span id="coin-count">0</span></div>
+                 <div class="level-text">Lv.<span id="level-num">1</span></div>
+             </div>
+             <div class="exp-container">
+                 <div class="exp-fill" id="exp-bar"></div>
+             </div>
+         </div>
+     </div>
+ 
+     <div id="setup-view">
+-        <h1 class="title">AI 遊戲生成機 v21.0</h1>
+-        <div class="subtitle">選項排序修復 • Google 聯網 • 智能搜題</div>
++        <h1 class="title">AI 遊戲生成機 v21.1</h1>
++        <div class="subtitle">進度條強化 • 選項排序修復 • Google 聯網</div>
+         
+-        <div class="input-group">
+-            <input type="password" id="api-key" placeholder="在此貼上 API Key (自動儲存)">
+-        </div>
++        <div class="input-group">
++            <input type="password" id="api-key" placeholder="在此貼上 API Key (自動儲存)">
++        </div>
++
++        <div class="input-group" style="display:flex; gap:10px; flex-wrap:wrap;">
++            <label style="flex:1;">
++                <span style="font-size:0.85rem; color:#aaa;">題目數量</span>
++                <select id="question-count" style="width:100%; padding:10px; border-radius:10px; border:1px solid #555; background:rgba(0,0,0,0.4); color:white;">
++                    <option value="5">5 題速戰</option>
++                    <option value="10" selected>10 題標準</option>
++                    <option value="15">15 題馬拉松</option>
++                </select>
++            </label>
++            <label style="flex:1;">
++                <span style="font-size:0.85rem; color:#aaa;">難度模式</span>
++                <select id="difficulty" style="width:100%; padding:10px; border-radius:10px; border:1px solid #555; background:rgba(0,0,0,0.4); color:white;">
++                    <option value="easy">休閒 (❤️x6, 獎勵 0.8x)</option>
++                    <option value="normal" selected>標準 (❤️x5, 獎勵 1.0x)</option>
++                    <option value="hard">地獄 (❤️x4, 獎勵 1.3x)</option>
++                </select>
++            </label>
++        </div>
+         
+         <div class="tabs">
+             <button class="tab-btn active" onclick="switchTab('image')">📸 圖片</button>
+             <button class="tab-btn" onclick="switchTab('text')">📝 文字</button>
+             <button class="tab-btn" onclick="switchTab('search')">🔍 智能搜題</button>
+         </div>
+ 
+         <div id="mode-image" class="mode-section active">
+             <div class="file-upload">
+                 <input type="file" id="image-input" accept="image/*" onchange="previewImage(this)">
+                 <div id="file-label">點擊上傳圖片 📷</div>
+             </div>
+             <img id="preview" style="max-width: 150px; display: none; margin: 0 auto 15px auto; border-radius: 10px; border: 2px solid #555;">
+         </div>
+ 
+         <div id="mode-text" class="mode-section">
+             <textarea id="text-input" placeholder="請貼上文章、故事或考題內容..."></textarea>
+         </div>
+ 
+         <div id="mode-search" class="mode-section">
+             <span class="google-badge">Google Search Enabled</span>
+             <input type="text" id="search-input" placeholder="輸入主題 (如: 2024奧運、Python教學...)" style="margin-top:10px; text-align:center;">
+             <div style="font-size: 0.8rem; color: #888; margin-top: 10px;">
+                 💡 系統將會使用 <b>Google 搜尋</b> 查找最新資訊來出題。
+             </div>
+         </div>
+ 
+         <button class="btn-main" id="generate-btn" onclick="startProcess()">🚀 開始挑戰</button>
+         <div id="status-log">準備就緒...</div>
+     </div>
+ 
+     <div id="game-view">
+-        <div class="game-header">
+-            <div class="header-left">
+-                <button class="btn-nav" onclick="goHome()">🏠 放棄</button>
+-            </div>
+-            <div id="hp-display" style="letter-spacing: 2px;">❤️❤️❤️❤️❤️</div>
+-            <div class="status-badge" id="level-display">Q 1/10</div>
+-        </div>
+-        <div id="scene-area">
+-            <div id="scene-emoji">🤖</div>
+-            <div id="scene-text">載入中...</div>
+-        </div>
++        <div class="game-header">
++            <div class="header-left">
++                <button class="btn-nav" onclick="goHome()">🏠 放棄</button>
++            </div>
++            <div id="hp-display" style="letter-spacing: 2px;">❤️❤️❤️❤️❤️</div>
++            <div class="status-badge" id="difficulty-display">標準 | ❤️x5 | 獎勵1.0x</div>
++            <div class="status-badge" id="accuracy-display">答對 0 / 0 | 命中率 0% | 最高連擊 0</div>
++            <div class="status-badge" id="level-display">Q 1/10</div>
++        </div>
++        <div class="progress-wrap">
++            <div class="progress-bar">
++                <div id="progress-fill"></div>
++            </div>
++            <div id="progress-text">第 1 / 10 題 · 已完成 0%</div>
++        </div>
++        <div id="scene-area">
++            <div id="scene-emoji">🤖</div>
++            <div id="scene-text">載入中...</div>
++        </div>
+         <div id="action-area"></div>
+     </div>
+ 
+     <div id="overlay">
+         <h2 id="ov-icon">🎉</h2>
+         <div id="reward-panel"></div>
+         <p id="ov-text">訊息</p>
+         <button class="btn-main" style="width: auto;" onclick="closeOverlay()">繼續</button>
+     </div>
+ </div>
+ 
+ <script>
+-    const TARGET_MODEL = "gemini-2.5-flash";
+-    let player = { level: 1, xp: 0, coins: 0, totalGames: 0 };
+-
+-    function loadProfile() {
+-        const saved = localStorage.getItem('ai_game_profile_v18'); 
+-        if (saved) player = JSON.parse(saved);
+-        updateProfileUI();
+-    }
+-
+-    function saveProfile() {
+-        localStorage.setItem('ai_game_profile_v18', JSON.stringify(player));
+-        updateProfileUI();
+-    }
++    const TARGET_MODEL = "gemini-2.5-flash";
++    const STORAGE_PROFILE = 'ai_game_profile_v18';
++    const STORAGE_CONFIG = 'ai_game_config_v21';
++    const STORAGE_MODE = 'ai_game_mode_v21';
++    const DEFAULT_CONFIG = { questionCount: 10, difficulty: 'normal' };
++
++    let player = { level: 1, xp: 0, coins: 0, totalGames: 0 };
++    let config = { ...DEFAULT_CONFIG };
++
++    function loadProfile() {
++        const saved = localStorage.getItem(STORAGE_PROFILE);
++        if (saved) player = JSON.parse(saved);
++        updateProfileUI();
++    }
++
++    function saveProfile() {
++        localStorage.setItem(STORAGE_PROFILE, JSON.stringify(player));
++        updateProfileUI();
++    }
++
++    function loadConfig() {
++        const saved = localStorage.getItem(STORAGE_CONFIG);
++        if (saved) config = { ...DEFAULT_CONFIG, ...JSON.parse(saved) };
++        document.getElementById('question-count').value = config.questionCount;
++        document.getElementById('difficulty').value = config.difficulty;
++    }
++
++    function saveConfig() {
++        localStorage.setItem(STORAGE_CONFIG, JSON.stringify(config));
++    }
++
++    const DIFFICULTY_SETTINGS = {
++        easy: { hp: 6, reward: 0.8, label: '休閒' },
++        normal: { hp: 5, reward: 1.0, label: '標準' },
++        hard: { hp: 4, reward: 1.3, label: '地獄' },
++    };
++
++    function getDifficulty() {
++        return DIFFICULTY_SETTINGS[config.difficulty] || DIFFICULTY_SETTINGS.normal;
++    }
+ 
+     function updateProfileUI() {
+         const XP_PER_LEVEL = 500;
+         while (player.xp >= XP_PER_LEVEL) {
+             player.xp -= XP_PER_LEVEL;
+             player.level++;
+         }
+         let rankName = "銅牌冒險家", rankIcon = "🥉", rankColor = "#cd7f32";
+         if (player.level >= 20) { rankName = "鑽石傳說"; rankIcon = "💎"; rankColor = "#b9f2ff"; }
+         else if (player.level >= 15) { rankName = "白金宗師"; rankIcon = "💠"; rankColor = "#e5e4e2"; }
+         else if (player.level >= 10) { rankName = "黃金大師"; rankIcon = "🥇"; rankColor = "#ffd700"; }
+         else if (player.level >= 5) { rankName = "銀牌勇者"; rankIcon = "🥈"; rankColor = "#c0c0c0"; }
+ 
+         document.getElementById('rank-icon').innerText = rankIcon;
+         document.getElementById('rank-name').innerText = rankName;
+         document.getElementById('rank-name').style.color = rankColor;
+         document.getElementById('coin-count').innerText = player.coins;
+         document.getElementById('level-num').innerText = player.level;
+         document.getElementById('exp-bar').style.width = `${(player.xp / XP_PER_LEVEL) * 100}%`;
+     }
+ 
+-    const keyInput = document.getElementById('api-key');
+-    if(localStorage.getItem('gemini_key')) keyInput.value = localStorage.getItem('gemini_key');
+-
+-    let gameData = null;
+-    let currentStage = 0;
+-    let hp = 5;
+-    let pendingAction = null;
+-    let currentMode = 'image';
+-
+-    loadProfile();
+-
+-    function switchTab(mode) {
+-        currentMode = mode;
+-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+-        document.querySelectorAll('.mode-section').forEach(s => s.classList.remove('active'));
+-        if (mode === 'image') {
+-            document.querySelector('.tab-btn:nth-child(1)').classList.add('active');
+-            document.getElementById('mode-image').classList.add('active');
++    const keyInput = document.getElementById('api-key');
++    if(localStorage.getItem('gemini_key')) keyInput.value = localStorage.getItem('gemini_key');
++
++    let gameData = null;
++    let currentStage = 0;
++    let hp = 5;
++    let pendingAction = null;
++    let currentMode = 'image';
++    let maxHp = 5;
++    let totalAttempts = 0;
++    let correctCount = 0;
++    let bestStreak = 0;
++    let currentStreak = 0;
++
++    loadProfile();
++    loadConfig();
++    restoreMode();
++
++    document.getElementById('question-count').addEventListener('change', (e) => {
++        config.questionCount = parseInt(e.target.value, 10);
++        saveConfig();
++    });
++    document.getElementById('difficulty').addEventListener('change', (e) => {
++        config.difficulty = e.target.value;
++        saveConfig();
++    });
++
++    function switchTab(mode) {
++        currentMode = mode;
++        localStorage.setItem(STORAGE_MODE, mode);
++        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
++        document.querySelectorAll('.mode-section').forEach(s => s.classList.remove('active'));
++        if (mode === 'image') {
++            document.querySelector('.tab-btn:nth-child(1)').classList.add('active');
++            document.getElementById('mode-image').classList.add('active');
+         } else if (mode === 'text') {
+             document.querySelector('.tab-btn:nth-child(2)').classList.add('active');
+             document.getElementById('mode-text').classList.add('active');
+         } else {
+             document.querySelector('.tab-btn:nth-child(3)').classList.add('active');
+             document.getElementById('mode-search').classList.add('active');
+         }
+     }
+ 
+-    function goHome() {
+-        if (confirm("返回首頁將失去當前進度，確定嗎？")) {
+-            location.reload();
+-        }
++    function restoreMode() {
++        const savedMode = localStorage.getItem(STORAGE_MODE);
++        if (savedMode) switchTab(savedMode);
++    }
++
++    function goHome() {
++        if (confirm("返回首頁將失去當前進度，確定嗎？")) {
++            location.reload();
++        }
+     }
+ 
+     function log(msg, type='info') {
+         const logBox = document.getElementById('status-log');
+         logBox.style.display = 'block';
+         const line = document.createElement('div');
+         line.className = `log-line log-${type}`;
+         line.innerHTML = `> ${msg}`;
+         logBox.appendChild(line);
+         logBox.scrollTop = logBox.scrollHeight;
+     }
+ 
+     function previewImage(input) {
+         if (input.files && input.files[0]) {
+             const reader = new FileReader();
+             reader.onload = function(e) {
+                 document.getElementById('preview').src = e.target.result;
+                 document.getElementById('preview').style.display = 'block';
+                 document.getElementById('file-label').innerText = "圖片已就緒";
+             }
+             reader.readAsDataURL(input.files[0]);
+         }
+     }
+ 
+     async function startProcess() {
+@@ -264,286 +344,352 @@
+         let isSearch = false;
+ 
+         if (currentMode === 'image') {
+             const file = document.getElementById('image-input').files[0];
+             if (!file) return log("請上傳圖片", "error");
+             log("正在處理圖片...");
+             const compressedBase64 = await compressImage(file);
+             inputData = compressedBase64.split(',')[1];
+             isImage = true;
+         } else if (currentMode === 'text') {
+             const textVal = document.getElementById('text-input').value.trim();
+             if (!textVal) return log("請輸入文字", "error");
+             inputData = textVal;
+             isImage = false;
+         } else {
+             const searchVal = document.getElementById('search-input').value.trim();
+             if (!searchVal) return log("請輸入關鍵字", "error");
+             inputData = searchVal;
+             isImage = false;
+             isSearch = true;
+         }
+ 
+         localStorage.setItem('gemini_key', apiKey);
+         document.getElementById('generate-btn').disabled = true;
+ 
+-        try {
+-            if (isSearch) {
+-                log(`🚀 正在 Google 搜尋: ${inputData}...`, "google");
+-                document.getElementById('generate-btn').innerText = "🌍 聯網搜尋中...";
++        try {
++            const difficultySetting = getDifficulty();
++            log(`模式: ${difficultySetting.label}｜題數: ${config.questionCount} 題`);
++            if (isSearch) {
++                log(`🚀 正在 Google 搜尋: ${inputData}...`, "google");
++                document.getElementById('generate-btn').innerText = "🌍 聯網搜尋中...";
+             } else {
+                 log(`正在連線 AI...`);
+             }
+             
+-            const result = await callGemini(apiKey, TARGET_MODEL, inputData, isImage, isSearch);
+-            log(`✅ 生成完畢！準備開始...`, "success");
++            const result = await callGemini(apiKey, TARGET_MODEL, inputData, isImage, isSearch);
++            log(`✅ 生成完畢！準備開始...`, "success");
+             
+             gameData = result;
+             setTimeout(startGame, 1000);
+ 
+         } catch (e) {
+             console.error(e);
+             log("錯誤: " + e.message, "error");
+             document.getElementById('generate-btn').innerText = "🚀 開始挑戰";
+             document.getElementById('generate-btn').disabled = false;
+         }
+     }
+ 
+     function compressImage(file) {
+         return new Promise((resolve) => {
+             const reader = new FileReader();
+             reader.readAsDataURL(file);
+             reader.onload = (e) => {
+                 const img = new Image();
+                 img.src = e.target.result;
+                 img.onload = () => {
+                     const canvas = document.createElement('canvas');
+                     const ctx = canvas.getContext('2d');
+                     const MAX = 800;
+                     let w = img.width, h = img.height;
+                     if (w > MAX) { h *= MAX/w; w = MAX; }
+                     canvas.width = w; canvas.height = h;
+                     ctx.drawImage(img, 0, 0, w, h);
+                     resolve(canvas.toDataURL('image/jpeg', 0.7));
+                 };
+             };
+         });
+     }
+ 
+-    async function callGemini(key, model, data, isImage, isSearch) {
+-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+-        
+-        let userPart;
+-        let systemPrompt;
+-        let toolsPayload = [];
++    async function callGemini(key, model, data, isImage, isSearch) {
++        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
++
++        let userPart;
++        let systemPrompt;
++        let toolsPayload = [];
++        const questionCount = config.questionCount;
++        const difficultyLabel = getDifficulty().label;
+ 
+         if (isImage) {
+             userPart = { inline_data: { mime_type: "image/jpeg", data: data } };
+             systemPrompt = "Analyze the image content.";
+         } else if (isSearch) {
+             userPart = { text: `Research Topic: ${data}` };
+             toolsPayload = [{ google_search: {} }];
+             systemPrompt = `
+                 You are an Expert Teacher with access to Google Search.
+                 User wants a quiz on: "${data}".
+                 ACTION: Use Google Search to find accurate facts.
+             `;
+         } else {
+             userPart = { text: `Material: ${data}` };
+             systemPrompt = "Analyze the text material.";
+         }
+ 
+         const fullPrompt = `
+             ${systemPrompt}
+-            TASK: Generate exactly 10 quiz stages.
+-            AUDIENCE: Adapt difficulty based on the topic.
++            TASK: Generate exactly ${questionCount} quiz stages.
++            DIFFICULTY: ${difficultyLabel}，請讓題目與解析相匹配。
++            AUDIENCE: Adapt difficulty based on the topic.
+             LANGUAGE: Traditional Chinese (繁體中文).
+             TYPES: Mix 'choice' and 'fill'.
+             FEEDBACK: Detailed explanations are required.
+             
+             JSON Format:
+             {
+                 "stages": [
+                     {
+                         "type": "choice", "emoji": "🔢", "text": "Question",
+                         "options": [{ "text": "A. Answer1", "correct": false, "feedback": "..." }, { "text": "B. Answer2", "correct": true, "feedback": "..." }],
+                         "answer": "answer_if_fill", "feedback_correct": "...", "feedback_wrong": "..."
+                     }
+                 ]
+             }
+             Return ONLY JSON.
+         `;
+ 
+         const requestBody = {
+             contents: [{ parts: [{ text: fullPrompt }, userPart] }]
+         };
+ 
+         if (isSearch) {
+             requestBody.tools = toolsPayload;
+         }
+ 
+         const response = await fetch(url, {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify(requestBody)
+         });
+ 
+         if (!response.ok) throw new Error(`API Error ${response.status}`);
+         const resData = await response.json();
+         
+         const candidates = resData.candidates;
+         if (!candidates || candidates.length === 0) throw new Error("No response from AI");
+         
+         const rawText = candidates[0].content.parts.map(p => p.text).join(''); 
+         const jsonString = rawText.substring(rawText.indexOf('{'), rawText.lastIndexOf('}') + 1);
+         try { return JSON.parse(jsonString); } catch(e) { throw new Error("JSON Parse Error"); }
+     }
+ 
+-    function startGame() {
+-        document.getElementById('setup-view').style.display = 'none';
+-        document.getElementById('game-view').style.display = 'flex';
+-        currentStage = 0; hp = 5; 
+-        renderStage();
+-    }
++    function startGame() {
++        document.getElementById('setup-view').style.display = 'none';
++        document.getElementById('game-view').style.display = 'flex';
++        currentStage = 0;
++        totalAttempts = 0;
++        correctCount = 0;
++        bestStreak = 0;
++        currentStreak = 0;
++        const diff = getDifficulty();
++        maxHp = diff.hp;
++        hp = diff.hp;
++        document.getElementById('difficulty-display').innerText = `${diff.label} | ❤️x${diff.hp} | 獎勵${diff.reward}x`;
++        updateProgress(0, gameData.stages.length);
++        updateStatsUI();
++        renderStage();
++    }
+ 
+     function renderStage() {
+-        if (currentStage >= gameData.stages.length) {
+-            handleGameClear();
+-            return;
+-        }
+-        const stage = gameData.stages[currentStage];
+-        document.getElementById('level-display').innerText = `Q ${currentStage+1}/10`;
+-        updateHP();
+-        document.getElementById('scene-emoji').innerText = stage.emoji;
+-        document.getElementById('scene-text').innerText = stage.text;
++        if (currentStage >= gameData.stages.length) {
++            handleGameClear();
++            return;
++        }
++        const stage = gameData.stages[currentStage];
++        document.getElementById('level-display').innerText = `Q ${currentStage+1}/${gameData.stages.length}`;
++        updateHP();
++        document.getElementById('scene-emoji').innerText = stage.emoji;
++        document.getElementById('scene-text').innerText = stage.text;
++        updateProgress(currentStage, gameData.stages.length);
+         
+         const area = document.getElementById('action-area');
+         area.innerHTML = '';
+ 
+         if (stage.type === 'fill') {
+             const wrapper = document.createElement('div');
+             wrapper.className = 'input-area';
+             const input = document.createElement('input');
+             input.id = 'answer-input';
+             input.placeholder = "輸入答案...";
+             input.autocomplete = "off";
+             const btn = document.createElement('button');
+             btn.className = 'btn-submit';
+             btn.innerText = "送出";
+             btn.onclick = () => checkFillAns(stage, input.value);
+             input.addEventListener("keypress", function(event) { if (event.key === "Enter") btn.click(); });
+             wrapper.appendChild(input);
+             wrapper.appendChild(btn);
+             area.appendChild(wrapper);
+             setTimeout(() => input.focus(), 100);
+         } else {
+             const grid = document.createElement('div');
+             grid.className = 'choices-grid';
+             // 修正：不再隨機洗牌選項，保留 AI 生成的順序 (A, B, C, D)
+             let opts = stage.options; 
+             opts.forEach(opt => {
+                 const btn = document.createElement('button');
+                 btn.className = 'btn-choice';
+                 btn.innerText = opt.text;
+                 btn.onclick = () => checkChoiceAns(opt);
+                 grid.appendChild(btn);
+             });
+             area.appendChild(grid);
+         }
+     }
+ 
+-    function checkFillAns(stage, userVal) {
+-        if (!userVal.trim()) return;
+-        const cleanUser = userVal.trim().toLowerCase();
+-        const cleanAns = stage.answer.toString().toLowerCase();
+-        if (cleanUser === cleanAns) {
+-            showOverlay("⭕", stage.feedback_correct, false, true);
+-        } else {
+-            hp--; updateHP();
+-            if(hp<=0) handleGameOver(stage.feedback_wrong);
+-            else showOverlay("❌", stage.feedback_wrong, false, false);
+-        }
+-    }
+-
+-    function checkChoiceAns(opt) {
+-        if (opt.correct) {
+-            showOverlay("⭕", opt.feedback, false, true);
+-        } else {
+-            hp--; updateHP();
+-            if(hp<=0) handleGameOver(opt.feedback);
+-            else showOverlay("❌", opt.feedback, false, false);
+-        }
+-    }
+-
+-    function updateHP() {
+-        let h = ""; 
+-        for(let i=0;i<hp;i++) h+="❤️"; 
+-        for(let i=hp;i<5;i++) h+="🖤"; 
+-        document.getElementById('hp-display').innerText = h;
+-    }
+-
+-    function handleGameClear() {
+-        const baseXP = 100;
+-        const bonusCoins = hp * 10;
+-        const bonusXP = hp * 20;
+-        const totalXP = baseXP + bonusXP;
+-
+-        player.coins += bonusCoins;
+-        player.xp += totalXP;
+-        player.totalGames++;
+-        saveProfile();
+-
+-        const rewardHTML = `
+-            <div class="reward-box">
+-                <div class="reward-item">通關經驗: +${baseXP} XP</div>
+-                <div class="reward-item">生命加成: +${bonusXP} XP</div>
+-                <div class="reward-item">賺取金幣: <span class="reward-highlight">💰 +${bonusCoins}</span></div>
+-                <hr style="border:0; border-top:1px solid #555; margin:10px 0;">
+-                <div class="reward-item" style="color:#00e676;">總計獲得: ${totalXP} XP</div>
+-            </div>
+-        `;
++    function checkFillAns(stage, userVal) {
++        if (!userVal.trim()) return;
++        totalAttempts++;
++        const cleanUser = userVal.trim().toLowerCase();
++        const cleanAns = stage.answer.toString().toLowerCase();
++        if (cleanUser === cleanAns) {
++            correctCount++;
++            currentStreak++;
++            bestStreak = Math.max(bestStreak, currentStreak);
++            updateStatsUI();
++            showOverlay("⭕", stage.feedback_correct, false, true);
++        } else {
++            currentStreak = 0;
++            updateStatsUI();
++            hp--; updateHP();
++            if(hp<=0) handleGameOver(stage.feedback_wrong);
++            else showOverlay("❌", stage.feedback_wrong, false, false);
++        }
++    }
++
++    function checkChoiceAns(opt) {
++        totalAttempts++;
++        if (opt.correct) {
++            correctCount++;
++            currentStreak++;
++            bestStreak = Math.max(bestStreak, currentStreak);
++            updateStatsUI();
++            showOverlay("⭕", opt.feedback, false, true);
++        } else {
++            currentStreak = 0;
++            updateStatsUI();
++            hp--; updateHP();
++            if(hp<=0) handleGameOver(opt.feedback);
++            else showOverlay("❌", opt.feedback, false, false);
++        }
++    }
++
++    function updateHP() {
++        let h = "";
++        for(let i=0;i<hp;i++) h+="❤️";
++        for(let i=hp;i<maxHp;i++) h+="🖤";
++        document.getElementById('hp-display').innerText = h;
++    }
++
++    function handleGameClear() {
++        const { reward, label } = getDifficulty();
++        const baseXP = 100;
++        const bonusCoins = Math.round(hp * 10 * reward);
++        const bonusXP = Math.round(hp * 20 * reward);
++        const totalXP = Math.round((baseXP + bonusXP) * reward);
++
++        updateProgress(gameData.stages.length, gameData.stages.length);
++
++        player.coins += bonusCoins;
++        player.xp += totalXP;
++        player.totalGames++;
++        saveProfile();
++
++        const rewardHTML = `
++            <div class="reward-box">
++                <div class="reward-item">通關經驗: +${baseXP} XP</div>
++                <div class="reward-item">難度係數 (${label}): x${reward}</div>
++                <div class="reward-item">生命加成: +${bonusXP} XP</div>
++                <div class="reward-item">賺取金幣: <span class="reward-highlight">💰 +${bonusCoins}</span></div>
++                <hr style="border:0; border-top:1px solid #555; margin:10px 0;">
++                <div class="reward-item" style="color:#00e676;">總計獲得: ${totalXP} XP</div>
++            </div>
++            ${buildSummaryHTML()}
++        `;
+         
+         document.getElementById('reward-panel').innerHTML = rewardHTML;
+         showOverlay("🏆", "恭喜通關！結算獎勵如下：", true, false);
+     }
+ 
+     function handleGameOver(reason) {
+-        const pityXP = 10;
++        const pityXP = Math.round(10 * getDifficulty().reward);
+         player.xp += pityXP;
+         saveProfile();
+ 
+-        const rewardHTML = `
+-            <div class="reward-box" style="border-color: #ff5252;">
+-                <div class="reward-item">安慰獎勵: +${pityXP} XP</div>
+-                <div class="reward-item" style="font-size:0.9rem; color:#aaa;">別灰心，下次一定行！</div>
+-            </div>
+-        `;
+-        document.getElementById('reward-panel').innerHTML = rewardHTML;
+-        showOverlay("💀", "挑戰失敗...\n" + reason, false, false, true);
+-    }
+-
+-    function showOverlay(icon, txt, isWin, isNext, isDead=false) {
+-        const ov = document.getElementById('overlay'); ov.style.display = 'flex';
+-        document.getElementById('ov-icon').innerText = icon;
+-        document.getElementById('ov-text').innerText = txt;
++        const rewardHTML = `
++            <div class="reward-box" style="border-color: #ff5252;">
++                <div class="reward-item">安慰獎勵: +${pityXP} XP</div>
++                <div class="reward-item" style="font-size:0.9rem; color:#aaa;">別灰心，下次一定行！</div>
++            </div>
++            ${buildSummaryHTML(true)}
++        `;
++        document.getElementById('reward-panel').innerHTML = rewardHTML;
++        showOverlay("💀", "挑戰失敗...\n" + reason, false, false, true);
++    }
++
++    function showOverlay(icon, txt, isWin, isNext, isDead=false) {
++        const ov = document.getElementById('overlay'); ov.style.display = 'flex';
++        document.getElementById('ov-icon').innerText = icon;
++        document.getElementById('ov-text').innerText = txt;
+         const btn = document.querySelector('#overlay button');
+         
+         if (!isWin && !isDead) {
+             document.getElementById('reward-panel').innerHTML = "";
+         }
+ 
+         if(isWin || isDead) {
+-            pendingAction = () => { location.reload(); };
+-            btn.innerText = "🏠 返回首頁 (已存檔)";
+-        } else if(isNext) {
+-            pendingAction = () => { ov.style.display='none'; currentStage++; renderStage(); };
+-            btn.innerText = "下一關";
+-        } else {
+-            pendingAction = () => { ov.style.display='none'; };
+-            btn.innerText = "再試一次";
+-        }
+-    }
+-    function closeOverlay() { if(pendingAction) pendingAction(); }
++            pendingAction = () => { location.reload(); };
++            btn.innerText = "🏠 返回首頁 (已存檔)";
++        } else if(isNext) {
++            pendingAction = () => { ov.style.display='none'; currentStage++; renderStage(); };
++            btn.innerText = "下一關";
++        } else {
++            pendingAction = () => { ov.style.display='none'; };
++            btn.innerText = "再試一次";
++        }
++    }
++    function closeOverlay() { if(pendingAction) pendingAction(); }
++
++    function updateProgress(currentIndex, total) {
++        if (total <= 0) return;
++        const clamped = Math.min(currentIndex, total);
++        const percent = Math.round((clamped / total) * 100);
++        const fill = document.getElementById('progress-fill');
++        const text = document.getElementById('progress-text');
++        fill.style.width = `${Math.min(percent, 100)}%`;
++        text.innerText = `第 ${Math.min(currentIndex + 1, total)} / ${total} 題 · 已完成 ${percent}%`;
++    }
++
++    function buildSummaryHTML(isFail = false) {
++        const accuracy = totalAttempts === 0 ? 0 : Math.round((correctCount / totalAttempts) * 100);
++        const summaryTitle = isFail ? '戰報' : '戰鬥摘要';
++        return `
++            <div class="reward-box" style="margin-top:10px;">
++                <div class="reward-item" style="font-weight:bold;">${summaryTitle}</div>
++                <div class="reward-item">答題次數：${totalAttempts} 次</div>
++                <div class="reward-item">答對題數：${correctCount} 題</div>
++                <div class="reward-item">命中率：${accuracy}%</div>
++                <div class="reward-item">最長連擊：${bestStreak} 連勝</div>
++            </div>
++        `;
++    }
++
++    function updateStatsUI() {
++        const accuracy = totalAttempts === 0 ? 0 : Math.round((correctCount / totalAttempts) * 100);
++        const badge = document.getElementById('accuracy-display');
++        badge.innerText = `答對 ${correctCount} / ${totalAttempts} | 命中率 ${accuracy}% | 最高連擊 ${bestStreak}`;
++    }
+ </script>
+ 
+ </body>
+ </html>
+ 
+EOF
+)
