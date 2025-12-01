@@ -113,7 +113,7 @@
     <div id="setup-view">
         <h1 class="title">AI 遊戲生成機 v22.1</h1>
         <div class="subtitle">選項排序修復 • Google 聯網 • 智能搜題 • 輕鬆愉快音樂</div>
-        <div class="music-note">🎵 每次重新整理頁面都會為你隨機生成一段輕鬆愉快的旋律，讓冒險保持明亮的節奏。</div>
+        <div class="music-note">🎵 每次重新整理頁面都會隨機播放一首 YouTube 輕音樂，讓冒險保持明亮的節奏。</div>
         
         <div class="input-group">
             <input type="password" id="api-key" placeholder="在此貼上 API Key (自動儲存)">
@@ -180,6 +180,8 @@
     </div>
 </div>
 
+<div id="music-player" style="position: fixed; width: 0; height: 0; overflow: hidden; pointer-events: none;"></div>
+
 <script>
     const TARGET_MODEL = "gemini-2.5-flash";
     const XP_PER_LEVEL = 500;
@@ -188,88 +190,74 @@
     const HEAL_COST = 30;
     const STREAK_REWARD = 5;
 
-    let audioCtx = null;
-    let musicTimer = null;
+    const YT_TRACKS = [
+        "5qap5aO4i9A", // lofi hip hop radio
+        "DWcJFNfaw9c", // lofi beats
+        "jfKfPfyJRdk", // chill beats to relax/study to
+        "kgx4WGK0oNU", // ambient focus
+        "6uddGul0oAc"  // peaceful piano
+    ];
 
-    function initAudioContext() {
-        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContextClass) return null;
-        if (!audioCtx) audioCtx = new AudioContextClass();
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-        return audioCtx;
+    let ytPlayer = null;
+    let musicRequested = false;
+
+    function loadYouTubeAPI() {
+        if (document.getElementById('youtube-api')) return;
+        const tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        tag.id = 'youtube-api';
+        document.head.appendChild(tag);
     }
 
-    function playCheerfulPhrase(baseFreq, palette) {
-        const ctx = initAudioContext();
-        if (!ctx) return;
-        const now = ctx.currentTime;
+    function pickRandomTrack() {
+        return YT_TRACKS[Math.floor(Math.random() * YT_TRACKS.length)];
+    }
 
-        const masterGain = ctx.createGain();
-        masterGain.gain.value = 0.0001;
-        masterGain.connect(ctx.destination);
+    function playRandomTrack() {
+        if (!ytPlayer || typeof ytPlayer.loadVideoById !== 'function') return;
+        const track = pickRandomTrack();
+        ytPlayer.loadVideoById({ videoId: track, suggestedQuality: 'small' });
+        ytPlayer.setLoop(false);
+    }
 
-        const scale = (palette || [0, 2, 4, 7, 9]).sort(() => Math.random() - 0.5);
+    function startYouTubeMusic() {
+        if (musicRequested) return;
+        musicRequested = true;
+        loadYouTubeAPI();
+        if (ytPlayer && ytPlayer.playVideo) {
+            playRandomTrack();
+            ytPlayer.playVideo();
+        }
+    }
 
-        // 和弦墊底
-        scale.slice(0, 3).forEach((semi, idx) => {
-            const osc = ctx.createOscillator();
-            osc.type = idx % 2 === 0 ? 'triangle' : 'sine';
-            osc.frequency.value = baseFreq * Math.pow(2, semi / 12);
-            osc.detune.value = (Math.random() * 12) - 6;
-            osc.connect(masterGain);
-            const duration = 2.4 + Math.random() * 0.5;
-            osc.start(now + idx * 0.05);
-            osc.stop(now + idx * 0.05 + duration);
+    window.onYouTubeIframeAPIReady = () => {
+        ytPlayer = new YT.Player('music-player', {
+            height: '0',
+            width: '0',
+            videoId: pickRandomTrack(),
+            playerVars: {
+                autoplay: 0,
+                controls: 0,
+                disablekb: 1,
+                rel: 0,
+                modestbranding: 1
+            },
+            events: {
+                onReady: (event) => {
+                    event.target.setVolume(20);
+                    if (musicRequested) {
+                        playRandomTrack();
+                        event.target.playVideo();
+                    }
+                },
+                onStateChange: (event) => {
+                    if (event.data === YT.PlayerState.ENDED) {
+                        playRandomTrack();
+                    }
+                }
+            }
         });
-
-        // 簡單旋律
-        const melodyGain = ctx.createGain();
-        melodyGain.gain.value = 0;
-        melodyGain.connect(masterGain);
-        const melody = ctx.createOscillator();
-        melody.type = 'sine';
-        melody.frequency.setValueAtTime(baseFreq * 2, now);
-        melody.frequency.linearRampToValueAtTime(baseFreq * Math.pow(2, scale[0] / 12), now + 0.6);
-        melody.frequency.linearRampToValueAtTime(baseFreq * Math.pow(2, scale[1] / 12), now + 1.3);
-        melody.frequency.linearRampToValueAtTime(baseFreq * Math.pow(2, scale[2] / 12), now + 2);
-        melody.connect(melodyGain);
-        melody.start(now + 0.12);
-        melody.stop(now + 2.4);
-
-        melodyGain.gain.setValueAtTime(0, now + 0.12);
-        melodyGain.gain.linearRampToValueAtTime(0.07, now + 0.4);
-        melodyGain.gain.linearRampToValueAtTime(0.05, now + 1.5);
-        melodyGain.gain.linearRampToValueAtTime(0, now + 2.4);
-
-        masterGain.gain.setValueAtTime(0, now);
-        masterGain.gain.linearRampToValueAtTime(0.08, now + 0.25);
-        masterGain.gain.linearRampToValueAtTime(0.05, now + 1.6);
-        masterGain.gain.linearRampToValueAtTime(0, now + 3.2);
-    }
-
-    function generateCheerfulProfile() {
-        const palettes = [
-            [0, 2, 4, 7, 9],   // 大調五聲音階
-            [0, 2, 5, 7, 9],   // Lydian 風格
-            [0, 4, 7, 9, 14],  // 明亮和弦+高音
-        ];
-        return {
-            base: 180 + Math.random() * 140,
-            palette: palettes[Math.floor(Math.random() * palettes.length)]
-        };
-    }
-
-    function startBackgroundMusic() {
-        if (musicTimer) return;
-        const ctx = initAudioContext();
-        if (!ctx) return;
-        const profile = generateCheerfulProfile();
-        const { base, palette } = profile;
-        playCheerfulPhrase(base, palette);
-        musicTimer = setInterval(() => {
-            playCheerfulPhrase(base + Math.random() * 25 - 12, palette);
-        }, 3000 + Math.random() * 500);
-    }
+    };
 
     let player = { level: 1, xp: 0, coins: 0, totalGames: 0 };
 
@@ -314,9 +302,9 @@
     let pendingAction = null;
     let currentMode = 'image';
 
-    document.addEventListener('DOMContentLoaded', startBackgroundMusic);
+    document.addEventListener('DOMContentLoaded', startYouTubeMusic);
     ['click', 'touchstart', 'keydown'].forEach(evt => {
-        document.addEventListener(evt, () => startBackgroundMusic());
+        document.addEventListener(evt, () => startYouTubeMusic());
     });
 
     loadProfile();
