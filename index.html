@@ -214,9 +214,10 @@
     }
 
     function startYouTubeMusic() {
-        if (musicRequested) return;
-        musicRequested = true;
-        loadYouTubeAPI();
+        if (!musicRequested) {
+            musicRequested = true;
+            loadYouTubeAPI();
+        }
         if (ytPlayer && ytPlayer.playVideo) {
             playThemeTrack();
             ytPlayer.playVideo();
