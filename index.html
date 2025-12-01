@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 遊戲生成機 v21.0 (選項排序修復版)</title>
+    <title>AI 遊戲生成機 v21.1 (難度強化版)</title>
     <style>
         :root { --bg: #0f0c29; --panel: #302b63; --accent: #cb2d3e; --highlight: #ef473a; --text: #eee; --gold: #ffd700; --exp: #00e676; }
         
@@ -35,6 +35,10 @@
         .tab-btn { background: transparent; border: 1px solid #444; padding: 8px 15px; border-radius: 50px; color: #aaa; cursor: pointer; transition: 0.3s; font-size: 0.9rem; }
         .tab-btn.active { background: var(--highlight); color: white; border-color: var(--highlight); }
 
+        label { display: block; margin-bottom: 6px; color: #ccc; font-size: 0.9rem; }
+        select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #555; background: rgba(0,0,0,0.4); color: white; box-sizing: border-box; font-size: 1rem; text-align: center; }
+        .hint { color: #888; font-size: 0.8rem; margin-top: 6px; line-height: 1.4; }
+
         .mode-section { display: none; animation: fadeIn 0.4s; }
         .mode-section.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
@@ -59,7 +63,7 @@
         .game-header { padding: 15px 20px; background: rgba(0,0,0,0.3); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); flex-shrink: 0; }
         .btn-nav { background: transparent; border: 1px solid #666; color: #ccc; padding: 6px 15px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; }
         .btn-nav:hover { color: white; border-color: white; }
-        .status-badge { background: #333; padding: 5px 15px; border-radius: 20px; font-size: 0.9rem; color: #aaa; font-weight: bold; }
+        .status-badge { background: #333; padding: 5px 15px; border-radius: 20px; font-size: 0.9rem; color: #aaa; font-weight: bold; border: 1px solid #555; }
         
         #scene-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; overflow-y: auto; }
         #scene-emoji { font-size: 4rem; margin-bottom: 15px; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2)); }
@@ -101,11 +105,21 @@
     </div>
 
     <div id="setup-view">
-        <h1 class="title">AI 遊戲生成機 v21.0</h1>
-        <div class="subtitle">選項排序修復 • Google 聯網 • 智能搜題</div>
+        <h1 class="title">AI 遊戲生成機 v21.1</h1>
+        <div class="subtitle">選項排序修復 • Google 聯網 • 智能搜題 • 難度客製</div>
         
         <div class="input-group">
             <input type="password" id="api-key" placeholder="在此貼上 API Key (自動儲存)">
+        </div>
+
+        <div class="input-group">
+            <label for="difficulty-select">挑戰難度</label>
+            <select id="difficulty-select">
+                <option value="easy">🌱 休閒模式 (6 生命、獎勵較低)</option>
+                <option value="normal">⚔️ 冒險模式 (5 生命、標準獎勵)</option>
+                <option value="hard">🔥 煉獄模式 (3 生命、獎勵加成)</option>
+            </select>
+            <div class="hint">根據主題調整題目深度與生命數，並同步影響結算獎勵與 AI 出題難度。</div>
         </div>
         
         <div class="tabs">
@@ -144,7 +158,10 @@
                 <button class="btn-nav" onclick="goHome()">🏠 放棄</button>
             </div>
             <div id="hp-display" style="letter-spacing: 2px;">❤️❤️❤️❤️❤️</div>
-            <div class="status-badge" id="level-display">Q 1/10</div>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <div class="status-badge" id="difficulty-display">冒險模式</div>
+                <div class="status-badge" id="level-display">Q 1/10</div>
+            </div>
         </div>
         <div id="scene-area">
             <div id="scene-emoji">🤖</div>
@@ -163,6 +180,11 @@
 
 <script>
     const TARGET_MODEL = "gemini-2.5-flash";
+    const DIFFICULTY_PRESETS = {
+        easy: { label: "休閒模式", hp: 6, rewardMultiplier: 0.8, badgeColor: "#62d5b4", promptHint: "選擇題與填充題均偏簡單，強調基礎理解。" },
+        normal: { label: "冒險模式", hp: 5, rewardMultiplier: 1, badgeColor: "#ffa726", promptHint: "題目深度均衡，混合理解與應用。" },
+        hard: { label: "煉獄模式", hp: 3, rewardMultiplier: 1.35, badgeColor: "#ef5350", promptHint: "題目需批判思考與綜合推論，給出更高難度的陷阱。" },
+    };
     let player = { level: 1, xp: 0, coins: 0, totalGames: 0 };
 
     function loadProfile() {
@@ -197,15 +219,42 @@
     }
 
     const keyInput = document.getElementById('api-key');
+    const difficultySelect = document.getElementById('difficulty-select');
     if(localStorage.getItem('gemini_key')) keyInput.value = localStorage.getItem('gemini_key');
 
     let gameData = null;
     let currentStage = 0;
     let hp = 5;
+    let maxHp = 5;
+    let difficultyKey = localStorage.getItem('ai_game_difficulty') || 'normal';
     let pendingAction = null;
     let currentMode = 'image';
 
     loadProfile();
+    initDifficulty();
+
+    function initDifficulty() {
+        if (!DIFFICULTY_PRESETS[difficultyKey]) difficultyKey = 'normal';
+        difficultySelect.value = difficultyKey;
+        updateDifficultyBadge(getDifficultySettings());
+        difficultySelect.addEventListener('change', () => {
+            difficultyKey = difficultySelect.value;
+            localStorage.setItem('ai_game_difficulty', difficultyKey);
+            updateDifficultyBadge(getDifficultySettings());
+        });
+    }
+
+    function getDifficultySettings() {
+        return DIFFICULTY_PRESETS[difficultyKey] || DIFFICULTY_PRESETS.normal;
+    }
+
+    function updateDifficultyBadge(settings) {
+        const badge = document.getElementById('difficulty-display');
+        badge.innerText = settings.label;
+        badge.style.borderColor = settings.badgeColor;
+        badge.style.color = settings.badgeColor;
+        badge.style.background = "rgba(0,0,0,0.35)";
+    }
 
     function switchTab(mode) {
         currentMode = mode;
@@ -293,7 +342,10 @@
             } else {
                 log(`正在連線 AI...`);
             }
-            
+
+            const difficultySettings = getDifficultySettings();
+            log(`🎯 難度：${difficultySettings.label}（生命 ${difficultySettings.hp}、獎勵倍率 ${difficultySettings.rewardMultiplier}x）`);
+
             const result = await callGemini(apiKey, TARGET_MODEL, inputData, isImage, isSearch);
             log(`✅ 生成完畢！準備開始...`, "success");
             
@@ -335,6 +387,7 @@
         let userPart;
         let systemPrompt;
         let toolsPayload = [];
+        const difficultySettings = getDifficultySettings();
 
         if (isImage) {
             userPart = { inline_data: { mime_type: "image/jpeg", data: data } };
@@ -356,10 +409,11 @@
             ${systemPrompt}
             TASK: Generate exactly 10 quiz stages.
             AUDIENCE: Adapt difficulty based on the topic.
+            DIFFICULTY: ${difficultySettings.label} - ${difficultySettings.promptHint}
             LANGUAGE: Traditional Chinese (繁體中文).
-            TYPES: Mix 'choice' and 'fill'.
+            TYPES: Mix 'choice' and 'fill'. Ensure no duplicate correct answers in choices.
             FEEDBACK: Detailed explanations are required.
-            
+
             JSON Format:
             {
                 "stages": [
@@ -401,7 +455,12 @@
     function startGame() {
         document.getElementById('setup-view').style.display = 'none';
         document.getElementById('game-view').style.display = 'flex';
-        currentStage = 0; hp = 5; 
+        const difficultySettings = getDifficultySettings();
+        currentStage = 0;
+        hp = difficultySettings.hp;
+        maxHp = difficultySettings.hp;
+        updateDifficultyBadge(difficultySettings);
+        updateHP();
         renderStage();
     }
 
@@ -475,17 +534,18 @@
     }
 
     function updateHP() {
-        let h = ""; 
-        for(let i=0;i<hp;i++) h+="❤️"; 
-        for(let i=hp;i<5;i++) h+="🖤"; 
+        let h = "";
+        for(let i=0;i<hp;i++) h+="❤️";
+        for(let i=hp;i<maxHp;i++) h+="🖤";
         document.getElementById('hp-display').innerText = h;
     }
 
     function handleGameClear() {
         const baseXP = 100;
-        const bonusCoins = hp * 10;
-        const bonusXP = hp * 20;
-        const totalXP = baseXP + bonusXP;
+        const { rewardMultiplier, label } = getDifficultySettings();
+        const bonusCoins = Math.round(hp * 10 * rewardMultiplier);
+        const bonusXP = Math.round(hp * 20 * rewardMultiplier);
+        const totalXP = Math.round((baseXP + bonusXP) * rewardMultiplier);
 
         player.coins += bonusCoins;
         player.xp += totalXP;
@@ -497,6 +557,7 @@
                 <div class="reward-item">通關經驗: +${baseXP} XP</div>
                 <div class="reward-item">生命加成: +${bonusXP} XP</div>
                 <div class="reward-item">賺取金幣: <span class="reward-highlight">💰 +${bonusCoins}</span></div>
+                <div class="reward-item" style="color:${rewardMultiplier > 1 ? '#ffdd57' : '#8bc34a'};">難度倍率 (${label}): x${rewardMultiplier}</div>
                 <hr style="border:0; border-top:1px solid #555; margin:10px 0;">
                 <div class="reward-item" style="color:#00e676;">總計獲得: ${totalXP} XP</div>
             </div>
@@ -508,12 +569,14 @@
 
     function handleGameOver(reason) {
         const pityXP = 10;
+        const { label } = getDifficultySettings();
         player.xp += pityXP;
         saveProfile();
 
         const rewardHTML = `
             <div class="reward-box" style="border-color: #ff5252;">
                 <div class="reward-item">安慰獎勵: +${pityXP} XP</div>
+                <div class="reward-item" style="font-size:0.95rem; color:#ffdd57;">挑戰難度: ${label}</div>
                 <div class="reward-item" style="font-size:0.9rem; color:#aaa;">別灰心，下次一定行！</div>
             </div>
         `;
