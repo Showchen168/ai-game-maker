@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 遊戲生成機 v21.1 (難度強化版)</title>
+    <title>AI 遊戲生成機 v21.2 (難度強化版)</title>
     <style>
         :root { --bg: #0f0c29; --panel: #302b63; --accent: #cb2d3e; --highlight: #ef473a; --text: #eee; --gold: #ffd700; --exp: #00e676; }
         
@@ -105,12 +105,8 @@
     </div>
 
     <div id="setup-view">
-        <h1 class="title">AI 遊戲生成機 v21.1</h1>
+        <h1 class="title">AI 遊戲生成機 v21.2</h1>
         <div class="subtitle">選項排序修復 • Google 聯網 • 智能搜題 • 難度客製</div>
-        
-        <div class="input-group">
-            <input type="password" id="api-key" placeholder="在此貼上 API Key (自動儲存)">
-        </div>
 
         <div class="input-group">
             <label for="difficulty-select">挑戰難度</label>
@@ -179,6 +175,7 @@
 </div>
 
 <script>
+    const API_KEY = "AIzaSyCleWDhL6UaATiAGSWPxs5AZhD46VBhxLQ";
     const TARGET_MODEL = "gemini-2.5-flash";
     const DIFFICULTY_PRESETS = {
         easy: { label: "休閒模式", hp: 6, rewardMultiplier: 0.8, badgeColor: "#62d5b4", promptHint: "選擇題與填充題均偏簡單，強調基礎理解。" },
@@ -218,9 +215,7 @@
         document.getElementById('exp-bar').style.width = `${(player.xp / XP_PER_LEVEL) * 100}%`;
     }
 
-    const keyInput = document.getElementById('api-key');
     const difficultySelect = document.getElementById('difficulty-select');
-    if(localStorage.getItem('gemini_key')) keyInput.value = localStorage.getItem('gemini_key');
 
     let gameData = null;
     let currentStage = 0;
@@ -301,12 +296,12 @@
     }
 
     async function startProcess() {
-        const apiKey = keyInput.value.trim();
+        const apiKey = API_KEY;
         const logBox = document.getElementById('status-log');
         logBox.innerHTML = '';
         logBox.style.display = 'block';
         
-        if (!apiKey) return log("請輸入 API Key", "error");
+        if (!apiKey) return log("API Key 未設定", "error");
 
         let inputData = null;
         let isImage = false;
@@ -332,7 +327,6 @@
             isSearch = true;
         }
 
-        localStorage.setItem('gemini_key', apiKey);
         document.getElementById('generate-btn').disabled = true;
 
         try {
